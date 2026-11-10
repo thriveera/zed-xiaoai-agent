@@ -447,14 +447,7 @@ class InstallerGUI(tk.Tk):
         )
         self.key_visible = False
 
-        # Try to read existing key from keyring
-        if keyring:
-            try:
-                existing = keyring.get_password("xiaoai-agent", "api_key")
-                if existing:
-                    self.key_var.set(existing)
-            except Exception:
-                pass
+        self.key_var.set("")
 
         self.setup_ui()
 
