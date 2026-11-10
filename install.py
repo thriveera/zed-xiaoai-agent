@@ -70,18 +70,7 @@ def main():
 
     # 3. Secure API Key Configuration
     print("\n--- [ Настройка безопасного ключа XiaoAI ] ---")
-    current_key = keyring.get_password("xiaoai-agent", "api_key") or os.environ.get("XIAOAI_API_KEY", "")
-    
-    if current_key:
-        masked = current_key[:7] + "..." + current_key[-4:] if len(current_key) > 12 else "***"
-        log(f"Обнаружен сохранённый ключ: {masked}")
-        ans = input("Использовать этот ключ? [Y/n]: ").strip().lower()
-        if ans in ("", "y", "yes", "д", "да"):
-            api_key = current_key
-        else:
-            api_key = input("Введите ваш API-ключ XiaoAI: ").strip()
-    else:
-        api_key = input("Введите ваш API-ключ XiaoAI: ").strip()
+    api_key = input("Введите ваш API-ключ XiaoAI: ").strip()
 
     if not api_key:
         warn("Ключ не был введён. Агент запустится, но для работы потребуется настроить ключ.")
