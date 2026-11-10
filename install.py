@@ -89,7 +89,7 @@ def main():
         return
 
     print("=" * 65)
-    print("⚡ Zed XiaoAI External Agent v1.1.7 - Автоматическая установка")
+    print("⚡ Zed XiaoAI External Agent v1.1.8 - Автоматическая установка")
     print("=" * 65)
     print("Автор: thriveera (https://github.com/thriveera)")
     print("-" * 65)
