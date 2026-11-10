@@ -1,6 +1,6 @@
 """
 Zed XiaoAI Agent - Automated One-Step Installer & Manager
-Configures dependencies, encrypted credential storage, and registers the agent in Zed.
+Configures dependencies, encrypted credential storage, sync preferences, and registers the agent in Zed.
 
 Author: thriveera (https://github.com/thriveera)
 """
@@ -68,9 +68,18 @@ def uninstall():
     try:
         import keyring
         keyring.delete_password("xiaoai-agent", "api_key")
-        ok("API-ключ успешно удалён из системного хранилища (Keyring).")
+        ok("API-ключ успешно стёрт из системного хранилища (Keyring).")
     except Exception:
         pass
+
+    agent_dir = os.path.dirname(os.path.abspath(__file__))
+    for f in ["config.json", "models_cache.json", ".env"]:
+        fp = os.path.join(agent_dir, f)
+        if os.path.exists(fp):
+            try:
+                os.remove(fp)
+            except Exception:
+                pass
 
     print("\n🎉 Деинсталляция завершена.")
 
@@ -105,7 +114,7 @@ def main():
     import keyring
 
     # 3. Secure API Key Configuration
-    print("\n--- [ Настройка безопасного ключа XiaoAI ] ---")
+    print("\n--- [ 1. Настройка безопасного ключа XiaoAI ] ---")
     current_key = keyring.get_password("xiaoai-agent", "api_key") or os.environ.get("XIAOAI_API_KEY", "")
     
     if current_key:
@@ -143,8 +152,27 @@ def main():
             with open(os.path.join(agent_dir, ".env"), "w", encoding="utf-8") as env_f:
                 env_f.write(f"XIAOAI_API_KEY={api_key}\n")
 
-    # 4. Configure Zed settings.json
-    print("\n--- [ Подключение к редактору Zed ] ---")
+    # 4. Sync frequency configuration
+    print("\n--- [ 2. Режим синхронизации моделей, контекста и цен ] ---")
+    print("Выберите частоту синхронизации с роутером XiaoAI:")
+    print("  1. При каждом запуске агента (Автоматически, рекомендуется)")
+    print("  2. Каждые 6 часов")
+    print("  3. Каждые 24 часа")
+    print("  4. Только вручную (по команде /sync в чате)")
+    sync_choice = input("Ваш выбор [1-4, по умолчанию 1]: ").strip()
+    sync_map = {"1": "startup", "2": "6h", "3": "24h", "4": "manual"}
+    chosen_sync = sync_map.get(sync_choice, "startup")
+
+    cfg_path = os.path.join(agent_dir, "config.json")
+    try:
+        with open(cfg_path, "w", encoding="utf-8") as cf:
+            json.dump({"sync_interval": chosen_sync, "last_sync": 0}, cf, indent=2, ensure_ascii=False)
+        ok(f"Режим синхронизации установлен: {chosen_sync}")
+    except Exception as e:
+        warn(f"Не удалось записать config.json: {e}")
+
+    # 5. Configure Zed settings.json
+    print("\n--- [ 3. Подключение к редактору Zed ] ---")
     settings_path = get_zed_settings_path()
     if not settings_path:
         err("Не удалось определить путь к настройкам Zed.")
@@ -190,7 +218,7 @@ def main():
     print("1. Откройте или перезапустите Zed.")
     print("2. Откройте панель ассистента: сочетание клавиш [ Ctrl + ? ] (или Cmd + ?).")
     print("3. В выпадающем списке выбора агента переключитесь на 'XiaoAI Agent'.")
-    print("4. Выбирайте любую модель из роутера XiaoAI и пишите запрос!")
+    print("4. Выбирайте любую модель из роутера XiaoAI (цены указаны прямо на кнопке выбора)!")
     print("\nДля удаления агента запустите: python install.py --uninstall")
     print("=" * 65)
 
