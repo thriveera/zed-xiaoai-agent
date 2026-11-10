@@ -59,16 +59,18 @@ CACHE_FILE = os.path.join(AGENT_DIR, "models_cache.json")
 
 
 def load_agent_config() -> Dict[str, Any]:
+    """Loads user agent configuration from config.json."""
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
             pass
-    return {"sync_interval": "startup", "last_sync": 0}
+    return {}
 
 
 def save_agent_config(cfg: Dict[str, Any]):
+    """Saves agent configuration to config.json."""
     try:
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(cfg, f, indent=2, ensure_ascii=False)
@@ -76,18 +78,18 @@ def save_agent_config(cfg: Dict[str, Any]):
         pass
 
 
-def clean_model_name(name: str) -> str:
-    """Removes promotional notes in parentheses to display a clean, elegant name."""
-    name = re.sub(r'\s*\([^)]*(?:cheaper|latest|cheapest|world|new)[^)]*\)', '', name, flags=re.IGNORECASE)
-    return name.strip()
+def clean_model_name(raw_name: str) -> str:
+    """Removes promotional tags, discounts, and badges from model display names."""
+    c = re.sub(r"\s*\([0-9.]+折.*?\)", "", raw_name)
+    c = re.sub(r"\s*\[.*?\]", "", c)
+    return c.strip()
 
 
 def get_secure_api_key() -> str:
-    """
-    Retrieves the API key securely.
-    Priority:
-    1. OS Encrypted Keyring (Windows Credential Locker / macOS Keychain / Linux SecretService)
-    2. Environment variable XIAOAI_API_KEY
+    """Retrieves the API key with prioritized fallbacks:
+    1. OS Encrypted Keyring (secure vault)
+    2. Local config.json
+    3. Environment variable XIAOAI_API_KEY
     """
     try:
         import keyring
@@ -96,6 +98,10 @@ def get_secure_api_key() -> str:
             return key.strip()
     except Exception:
         pass
+
+    cfg = load_agent_config()
+    if cfg.get("api_key") and cfg["api_key"].strip():
+        return cfg["api_key"].strip()
 
     env_key = os.environ.get("XIAOAI_API_KEY")
     if env_key and env_key.strip():
@@ -158,10 +164,19 @@ def fetch_xiaoai_catalog(base_url: str, api_key: str) -> List[Dict[str, Any]]:
             oc_data = json.loads(r.read().decode())
             for mid, info in oc_data.items():
                 lim = info.get("limit", {})
+                mid_l = mid.lower()
+                is_r = info.get("reasoning")
+                if is_r is None:
+                    if "claude" in mid_l and not ("3-7" in mid_l or "3.7" in mid_l):
+                        is_r = False
+                    elif any(x in mid_l for x in ["gpt-6", "deepseek-v4", "kimi-k3", "claude-3-7", "claude-3.7", "o1", "o3", "r1", "qwq"]):
+                        is_r = True
+                    else:
+                        is_r = False
                 model_limits[mid] = {
                     "context": lim.get("context", 200000),
                     "output": lim.get("output", 32000),
-                    "reasoning": info.get("reasoning", True)
+                    "reasoning": bool(is_r)
                 }
     except Exception:
         pass
@@ -175,6 +190,7 @@ def fetch_xiaoai_catalog(base_url: str, api_key: str) -> List[Dict[str, Any]]:
             results = []
             for m in models:
                 mid = m["id"]
+                mid_l = mid.lower()
                 raw_name = m.get("name") or mid
                 c_name = clean_model_name(raw_name)
                 mult = float(m.get("multiplier", 0.0))
@@ -186,7 +202,14 @@ def fetch_xiaoai_catalog(base_url: str, api_key: str) -> List[Dict[str, Any]]:
                     price_str = f"{price_val} / 1M токенов"
                     short_price = f"{price_val} / 1M"
 
-                m_info = model_limits.get(mid, {"context": 200000, "output": 32000, "reasoning": True})
+                # Accurate reasoning determination
+                default_r = False
+                if "claude" in mid_l and not ("3-7" in mid_l or "3.7" in mid_l):
+                    default_r = False
+                elif any(x in mid_l for x in ["gpt-6", "deepseek-v4", "kimi-k3", "claude-3-7", "claude-3.7", "o1", "o3", "r1", "qwq"]):
+                    default_r = True
+
+                m_info = model_limits.get(mid, {"context": 200000, "output": 32000, "reasoning": default_r})
                 results.append({
                     "id": mid,
                     "name": raw_name,
@@ -199,7 +222,6 @@ def fetch_xiaoai_catalog(base_url: str, api_key: str) -> List[Dict[str, Any]]:
                     "reasoning": m_info["reasoning"]
                 })
             if results:
-                # Save to cache file
                 try:
                     with open(CACHE_FILE, "w", encoding="utf-8") as cf:
                         json.dump(results, cf, indent=2, ensure_ascii=False)
@@ -228,16 +250,18 @@ class XiaoAiAgent(acp.Agent):
         self.conn: Optional[acp.Client] = None
         self.base_url = DEFAULT_BASE_URL
         self.config = load_agent_config()
+        self.current_model = self.config.get("model", "xgg/gpt-6.1-sol")
+        self.mode = self.config.get("mode", "yolo")
         self.sync_interval = self.config.get("sync_interval", "startup")
+        self.thinking_level = self.config.get("thinking_level", "medium")
+        self.custom_thinking_budget = self.config.get("custom_thinking_budget", None)
         self.models_catalog: List[Dict[str, Any]] = []
-        self.current_model = "xgg/gpt-6.1-sol"
+        self.last_sync_time = 0.0
         self.current_mode = "code"
         self.session_history: Dict[str, List[Dict[str, str]]] = {}
         self.session_cwds: Dict[str, str] = {}
         self.session_usage: Dict[str, int] = {}
-        self.thinking_level = self.config.get("thinking_level", "high")
-        self.custom_thinking_budget: Optional[int] = self.config.get("custom_thinking_budget")
-        self.mode = self.config.get("mode", "yolo")
+        self.refresh_models(force=False)
 
     def on_connect(self, conn: acp.Client) -> None:
         self.conn = conn
@@ -245,29 +269,26 @@ class XiaoAiAgent(acp.Agent):
     def get_api_key(self) -> str:
         return get_secure_api_key()
 
-    def should_sync(self, force: bool = False) -> bool:
-        if force:
+    def should_sync(self) -> bool:
+        """Checks if background catalog sync is due based on user settings."""
+        if self.sync_interval == "startup" and self.last_sync_time == 0.0:
             return True
-        if self.sync_interval == "startup":
-            return True
-        if self.sync_interval == "manual":
-            return len(self.models_catalog) == 0
         now = time.time()
-        last_sync = self.config.get("last_sync", 0)
-        if self.sync_interval == "6h":
-            return (now - last_sync) > 6 * 3600 or len(self.models_catalog) == 0
-        if self.sync_interval == "24h":
-            return (now - last_sync) > 24 * 3600 or len(self.models_catalog) == 0
-        return True
+        if self.sync_interval == "6h" and (now - self.last_sync_time >= 6 * 3600):
+            return True
+        if self.sync_interval == "24h" and (now - self.last_sync_time >= 24 * 3600):
+            return True
+        return False
 
     def refresh_models(self, force: bool = False):
+        """Fetches or reloads the model list with prices and context limits."""
         key = self.get_api_key()
-        if self.should_sync(force):
-            self.models_catalog = fetch_xiaoai_catalog(self.base_url, key)
-            self.config["last_sync"] = int(time.time())
-            save_agent_config(self.config)
+        if (force or self.should_sync()) and key:
+            catalog = fetch_xiaoai_catalog(self.base_url, key)
+            if catalog:
+                self.models_catalog = catalog
+                self.last_sync_time = time.time()
         elif not self.models_catalog:
-            # Load from cache or fallback
             if os.path.exists(CACHE_FILE):
                 try:
                     with open(CACHE_FILE, "r", encoding="utf-8") as cf:
@@ -281,32 +302,32 @@ class XiaoAiAgent(acp.Agent):
             self.current_model = self.models_catalog[0]["id"]
 
     def model_supports_reasoning(self, model_id: str) -> bool:
-        """Determines if a model supports extended thinking / reasoning."""
+        """Determines if a model supports extended thinking / reasoning with strict non-reasoning veto."""
         mid = model_id.lower()
+        # 1. Non-reasoning veto list: Claude 3 & 3.5 models DO NOT support thinking (only Claude 3.7 does)
+        if "claude" in mid and not ("3-7" in mid or "3.7" in mid):
+            return False
+        if any(x in mid for x in ["gpt-4o", "gpt-4-", "selena", "muse", "glm-5", "deepseek-chat", "deepseek-flash", "qwen3.8"]):
+            return False
+
+        # 2. Check catalog metadata if not vetoed
         for m in self.models_catalog:
             if m.get("id") == model_id:
                 if m.get("reasoning") is True:
                     return True
                 if m.get("reasoning") is False:
                     return False
-        # Fallback by model ID families
-        # Claude 3 and 3.5 do NOT support thinking; only Claude 3.7 does
-        if "claude" in mid and not ("3-7" in mid or "3.7" in mid):
-            return False
-        if any(x in mid for x in ["gpt-4o-mini", "selena", "muse", "flash", "glm-5"]):
-            return False
-        if any(x in mid for x in ["gpt-6", "deepseek-v4", "kimi-k3", "claude-3-7", "claude-3.7", "o1", "o3", "r1", "qwq"]):
+
+        # 3. Positive reasoning families
+        if any(x in mid for x in ["gpt-6", "deepseek-v4", "kimi-k3", "claude-3-7", "claude-3.7", "o1", "o3", "r1", "qwq", "thinking", "reasoner"]):
             return True
         return False
-
 
     def build_config_options(self) -> List[SessionConfigOptionSelect]:
         model_options = []
         for m in self.models_catalog:
             price_tag = m.get("short_price") or m.get("price", "")
             c_name = m.get("clean_name") or clean_model_name(m.get("name", m["id"]))
-            
-            # The title displayed on the model selection button in Zed:
             display_title = f"{c_name} — {price_tag}"
             
             ctx = m.get("context", 200000)
@@ -325,22 +346,22 @@ class XiaoAiAgent(acp.Agent):
             SessionConfigSelectOption(
                 value="startup",
                 name="🔄 При каждом запуске агента (Авто)",
-                description="Автоматически синхронизировать модели, контекст и прайсы при каждом запуске агента"
+                description="Автоматически обновлять каталог моделей, контекст и прайсы при старте агента"
             ),
             SessionConfigSelectOption(
                 value="6h",
-                name="⏱️ Каждые 6 часов",
-                description="Автоматически обновлять каталог и прайсы каждые 6 часов"
+                name="⏱️ Раз в 6 часов",
+                description="Периодически обновлять каталог и прайсы раз в 6 часов"
             ),
             SessionConfigSelectOption(
                 value="24h",
-                name="📅 Каждые 24 часа",
-                description="Автоматически обновлять каталог и прайсы один раз в сутки"
+                name="📅 Раз в 24 часа",
+                description="Периодически обновлять каталог и прайсы один раз в сутки"
             ),
             SessionConfigSelectOption(
                 value="manual",
-                name="✋ Вручную (/sync в чате)",
-                description="Обновлять каталог только при вызове команды /sync"
+                name="🛑 Вручную (/sync в чат)",
+                description="Обновлять каталог только по вызову команды /sync"
             )
         ]
 
@@ -360,7 +381,7 @@ class XiaoAiAgent(acp.Agent):
                 SessionConfigSelectOption(
                     value="off",
                     name="Off (Не поддерживается моделью)",
-                    description="Данная модель не имеет режима рассуждений и работает только в быстром стандартном режиме"
+                    description="Данная модель не использует режим размышлений (работает в стандартном режиме)"
                 )
             ]
             current_thinking_value = "off"
@@ -375,13 +396,13 @@ class XiaoAiAgent(acp.Agent):
             custom_val = self.custom_thinking_budget or min(12000, max_allowed)
             max_label = f"Max ({cur_output // 1000}k)" if cur_output >= 1000 else f"Max ({cur_output})"
             custom_label = f"Custom ({custom_val})"
-            custom_desc = f"Пользовательский бюджет токенов: {custom_val} [мин: {min_allowed}, макс: {max_allowed}]"
+            custom_desc = f"Пользовательский лимит токенов: {custom_val} [мин: {min_allowed}, макс: {max_allowed}]"
 
             thinking_options = [
                 SessionConfigSelectOption(
                     value="off",
                     name="Off (0)",
-                    description="Отключить рассуждения (максимальная скорость и экономия токенов)"
+                    description="Отключить режим рассуждений (максимальная скорость и экономия токенов)"
                 ),
                 SessionConfigSelectOption(
                     value="minimal",
@@ -391,7 +412,7 @@ class XiaoAiAgent(acp.Agent):
                 SessionConfigSelectOption(
                     value="low",
                     name="Low (2k)",
-                    description="Базовый уровень рассуждений (~2 048 токенов)"
+                    description="Низкий уровень рассуждений (~2 048 токенов)"
                 ),
                 SessionConfigSelectOption(
                     value="medium",
@@ -401,7 +422,7 @@ class XiaoAiAgent(acp.Agent):
                 SessionConfigSelectOption(
                     value="high",
                     name="High (16k)",
-                    description="Глубокое рассуждение для сложных задач (~16 384 токена)"
+                    description="Высокое качество рассуждений для сложных задач (~16 384 токена)"
                 ),
                 SessionConfigSelectOption(
                     value="ultra",
@@ -411,7 +432,7 @@ class XiaoAiAgent(acp.Agent):
                 SessionConfigSelectOption(
                     value="max",
                     name=max_label,
-                    description=f"Максимально допустимый лимит генерации модели (~{cur_output} токенов)"
+                    description=f"Предельный лимит генерации модели (~{cur_output} токенов)"
                 ),
                 SessionConfigSelectOption(
                     value="custom",
@@ -425,7 +446,7 @@ class XiaoAiAgent(acp.Agent):
             elif any(o.value == self.thinking_level for o in thinking_options):
                 current_thinking_value = self.thinking_level
             else:
-                current_thinking_value = "medium" 
+                current_thinking_value = "medium"
 
         mode_options = [
             SessionConfigSelectOption(
@@ -473,7 +494,7 @@ class XiaoAiAgent(acp.Agent):
             SessionConfigOptionSelect(
                 id="sync_interval",
                 name="Sync Interval",
-                description="Частота автообновления каталога моделей, контекста и цен",
+                description="Частота синхронизации каталога моделей, контекста и цен",
                 category="model_config",
                 current_value=self.sync_interval,
                 options=sync_options
@@ -482,7 +503,6 @@ class XiaoAiAgent(acp.Agent):
 
     def get_user_instructions(self, session_id: str) -> Optional[str]:
         """Loads user-defined custom instructions / system prompt from Zed settings or workspace rules."""
-        # 1. Check workspace .zed/instructions.md or instructions.md
         cwd = self.session_cwds.get(session_id)
         if cwd and os.path.exists(cwd):
             for rel in [".zed/instructions.md", "instructions.md", ".zed/rules", ".rules"]:
@@ -490,82 +510,77 @@ class XiaoAiAgent(acp.Agent):
                 if os.path.isfile(candidate):
                     try:
                         with open(candidate, "r", encoding="utf-8") as f:
-                            content = f.read().strip()
-                            if content:
-                                return content
+                            c = f.read().strip()
+                            if c:
+                                return c
                     except Exception:
                         pass
 
-        # 2. Check Zed global settings.json
-        settings_path = None
+        # Check global Zed settings
         system = platform.system()
-        home = os.path.expanduser("~")
+        zed_settings_paths = []
         if system == "Windows":
             appdata = os.environ.get("APPDATA")
             if appdata:
-                settings_path = os.path.join(appdata, "Zed", "settings.json")
+                zed_settings_paths.append(os.path.join(appdata, "Zed", "settings.json"))
         elif system == "Darwin":
-            p1 = os.path.join(home, "Library", "Application Support", "Zed", "settings.json")
-            settings_path = p1 if os.path.exists(p1) else os.path.join(home, ".config", "zed", "settings.json")
+            home = os.path.expanduser("~")
+            zed_settings_paths.append(os.path.join(home, "Library", "Application Support", "Zed", "settings.json"))
         else:
-            settings_path = os.path.join(home, ".config", "zed", "settings.json")
+            home = os.path.expanduser("~")
+            zed_settings_paths.append(os.path.join(home, ".config", "zed", "settings.json"))
 
-        if settings_path and os.path.exists(settings_path):
-            try:
-                with open(settings_path, "r", encoding="utf-8") as f:
-                    s = json.load(f)
-                    for key in ["custom_instructions", "system_prompt"]:
-                        if key in s and isinstance(s[key], str) and s[key].strip():
-                            return s[key].strip()
-                    for parent in ["assistant", "agent"]:
-                        if parent in s and isinstance(s[parent], dict):
-                            for key in ["custom_instructions", "system_prompt", "instructions"]:
-                                if key in s[parent] and isinstance(s[parent][key], str) and s[parent][key].strip():
-                                    return s[parent][key].strip()
-            except Exception:
-                pass
+        for path in zed_settings_paths:
+            if os.path.isfile(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        settings = json.load(f)
+                        if "assistant" in settings:
+                            inst = settings["assistant"].get("instructions")
+                            if inst and isinstance(inst, str) and inst.strip():
+                                return inst.strip()
+                        if "instructions" in settings and isinstance(settings["instructions"], str) and settings["instructions"].strip():
+                            return settings["instructions"].strip()
+                except Exception:
+                    pass
+
         return None
 
-    async def initialize(
-        self,
-        protocol_version: int,
-        client_capabilities=None,
-        client_info=None,
-        **kwargs: Any,
-    ) -> InitializeResponse:
-        self.refresh_models()
+    async def initialize(self, implementation: Implementation, **kwargs: Any) -> InitializeResponse:
+        self.refresh_models(force=False)
         return InitializeResponse(
-            protocol_version=protocol_version,
+            protocol_version="1.0",
             agent_capabilities=AgentCapabilities(
+                load_session=True,
                 prompt_capabilities=PromptCapabilities(
                     embedded_context=True,
-                    image=True
+                    image=False,
+                    audio=False
                 ),
                 mcp_capabilities=McpCapabilities(
-                    http=True,
-                    sse=True,
-                    acp=True
+                    tools=True,
+                    resources=True,
+                    prompts=True
                 )
             ),
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.1.8",
+                version="1.1.9",
                 title="XiaoAI Agent"
             )
         )
 
     async def new_session(
         self,
-        cwd: str,
-        additional_directories: Optional[List[str]] = None,
+        session_id: str,
+        cwd: Optional[str] = None,
         mcp_servers: Optional[List[Any]] = None,
-        **kwargs: Any,
+        **kwargs: Any
     ) -> NewSessionResponse:
-        import uuid
-        session_id = str(uuid.uuid4())
+        if cwd:
+            self.session_cwds[session_id] = cwd
         self.session_history[session_id] = []
-        self.session_cwds[session_id] = cwd
-        self.refresh_models()
+        self.session_usage[session_id] = 0
 
         modes = SessionModeState(
             current_mode_id="code",
@@ -595,7 +610,6 @@ class XiaoAiAgent(acp.Agent):
             if not supports_reasoning:
                 self.thinking_level = "off"
             else:
-                # Restore previous active preference if switching back to a reasoning model
                 saved = self.config.get("saved_thinking_level", "medium")
                 self.thinking_level = saved if saved != "off" else "medium"
             self.config["model"] = self.current_model
@@ -637,7 +651,21 @@ class XiaoAiAgent(acp.Agent):
             self.sync_interval = str(value)
             self.config["sync_interval"] = self.sync_interval
             save_agent_config(self.config)
-        return SetSessionConfigOptionResponse(config_options=self.build_config_options())
+
+        options = self.build_config_options()
+        if self.conn and session_id:
+            try:
+                await self.conn.session_update(
+                    session_id=session_id,
+                    update=ConfigOptionUpdate(
+                        session_update="config_option_update",
+                        config_options=options
+                    )
+                )
+            except Exception:
+                pass
+
+        return SetSessionConfigOptionResponse(config_options=options)
 
     async def send_text_chunk(self, session_id: str, text: str):
         if not self.conn:
@@ -733,6 +761,7 @@ class XiaoAiAgent(acp.Agent):
                     f"Для использования Thinking/Reasoning переключитесь на модель с поддержкой рассуждений (например, **GPT 6.1 Sol**, **DeepSeek V4 Pro**, **Kimi K3**).\n"
                 )
                 return PromptResponse(stop_reason="end_turn")
+
             cur_output = 32000
             for m in self.models_catalog:
                 if m["id"] == self.current_model:
@@ -836,7 +865,6 @@ class XiaoAiAgent(acp.Agent):
         history = self.session_history.setdefault(session_id, [])
         history.append({"role": "user", "content": user_text})
 
-        # Forward user custom instructions if configured by the user in Zed, otherwise pure router mode
         payload_messages = []
         user_instructions = self.get_user_instructions(session_id)
         if user_instructions:
@@ -854,20 +882,35 @@ class XiaoAiAgent(acp.Agent):
             return PromptResponse(stop_reason="end_turn")
 
         try:
-            payload_dict = {
+            # 1. ALWAYS determine catalog output limit and reasoning capability FIRST
+            cur_output = 32000
+            for m in self.models_catalog:
+                if m["id"] == self.current_model:
+                    cur_output = m.get("output", 32000)
+                    break
+            min_allowed = 1024
+            max_allowed = cur_output
+
+            supports_reasoning = self.model_supports_reasoning(self.current_model)
+            is_claude = "claude" in self.current_model.lower()
+
+            # 2. Strict enforcement: if model does NOT support reasoning, force thinking off
+            effective_thinking = self.thinking_level if supports_reasoning else "off"
+
+            payload_dict: Dict[str, Any] = {
                 "model": self.current_model,
                 "messages": payload_messages,
                 "stream": True,
                 "stream_options": {"include_usage": True}
             }
-            # Map thinking level to exact budgets and reasoning effort
+
             budget_map = {
                 "minimal": 1024,
                 "low": 2048,
                 "medium": 8192,
                 "high": 16384,
                 "ultra": 32768,
-                "max": 64000
+                "max": max_allowed
             }
             effort_map = {
                 "minimal": "low",
@@ -878,22 +921,12 @@ class XiaoAiAgent(acp.Agent):
                 "max": "high"
             }
 
-            supports_reasoning = self.model_supports_reasoning(self.current_model)
-            is_claude = "claude" in self.current_model.lower()
-
-            # Claude API strictly requires max_tokens on all requests
+            # 3. Claude API strictly requires max_tokens on all requests
             if is_claude:
                 payload_dict["max_tokens"] = min(cur_output, 8192)
 
-            if supports_reasoning and self.thinking_level != "off":
-                cur_output = 32000
-                for m in self.models_catalog:
-                    if m["id"] == self.current_model:
-                        cur_output = m.get("output", 32000)
-                        break
-                min_allowed = 1024
-                max_allowed = cur_output
-
+            # 4. Attach thinking/reasoning params ONLY if model actually supports reasoning AND it is active
+            if supports_reasoning and effective_thinking != "off":
                 if self.thinking_level == "custom" or self.custom_thinking_budget:
                     raw_b = self.custom_thinking_budget or min(12000, max_allowed)
                     b_val = max(min_allowed, min(raw_b, max_allowed))
@@ -944,7 +977,7 @@ class XiaoAiAgent(acp.Agent):
                             "stream_options": {"include_usage": True}
                         }
                         if is_claude:
-                            fallback_dict["max_tokens"] = 4096
+                            fallback_dict["max_tokens"] = min(cur_output, 8192)
                         req_fb = urllib.request.Request(
                             endpoint,
                             data=json.dumps(fallback_dict).encode("utf-8"),
