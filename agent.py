@@ -1,4 +1,4 @@
-﻿"""
+"""
 XiaoAI ACP Agent for Zed Editor
 An Agent Client Protocol (ACP) server connecting Zed to the XiaoAI model router.
 
@@ -85,64 +85,97 @@ def set_secure_api_key(key: str) -> bool:
 
 
 FALLBACK_MODELS = [
-    {"id": "xgg/gpt-6.1-sol", "name": "GPT 6.1 Sol (XiaoAI)", "context": 400000},
-    {"id": "xgg/gpt-6-astra", "name": "GPT 6 Astra (XiaoAI)", "context": 400000},
-    {"id": "xgg/gpt-6-sol", "name": "GPT 6 Sol (XiaoAI)", "context": 400000},
-    {"id": "xgg/gpt-6-luna", "name": "GPT 6 Luna (XiaoAI)", "context": 400000},
-    {"id": "free/gpt-4o-mini", "name": "ChatGPT 4o mini [Free] (XiaoAI)", "context": 1000000},
-    {"id": "claude/sonnet", "name": "Claude Sonnet (XiaoAI)", "context": 200000},
-    {"id": "claude/opus", "name": "Claude Opus (XiaoAI)", "context": 200000},
-    {"id": "claude/haiku", "name": "Claude Haiku (XiaoAI)", "context": 200000},
-    {"id": "claude/fable", "name": "Claude Fable (XiaoAI)", "context": 200000},
-    {"id": "free/deepseek-flash", "name": "DeepSeek Flash [Free] (XiaoAI)", "context": 1000000},
-    {"id": "free/deepseek-v4-pro", "name": "DeepSeek V4 Pro [Free] (XiaoAI)", "context": 1000000},
-    {"id": "free/kimi-k3", "name": "Kimi K3 [Free] (XiaoAI)", "context": 1000000},
-    {"id": "free/qwen3.8-flash", "name": "Qwen 3.8 Flash [Free] (XiaoAI)", "context": 1000000},
-    {"id": "free/qwen3.8-max", "name": "Qwen 3.8 Max [Free] (XiaoAI)", "context": 1000000},
-    {"id": "free/glm-5.3", "name": "GLM 5.3 [Free] (XiaoAI)", "context": 1000000},
-    {"id": "free/glm-5.3-prime", "name": "GLM 5.3 Prime [Free] (XiaoAI)", "context": 1000000},
-    {"id": "free/GLM-5.3-Flash", "name": "GLM 5.3 Flash [Free] (XiaoAI)", "context": 1000000},
-    {"id": "muse/muse", "name": "Muse Spark 1.3 (XiaoAI)", "context": 256000},
-    {"id": "free/muse-spark-open", "name": "Muse Spark Open [Free] (XiaoAI)", "context": 1000000},
-    {"id": "test/selena-ai", "name": "SelenaAI [Experimental] (XiaoAI)", "context": 1048576},
+    {"id": "xgg/gpt-6.1-sol", "name": "GPT 6.1 Sol", "price": "$0.08 / 1M токенов", "short_price": "$0.08/1M", "context": 400000},
+    {"id": "xgg/gpt-6-astra", "name": "GPT 6 Astra", "price": "$0.20 / 1M токенов", "short_price": "$0.20/1M", "context": 400000},
+    {"id": "xgg/gpt-6-sol", "name": "GPT 6 Sol", "price": "$0.08 / 1M токенов", "short_price": "$0.08/1M", "context": 400000},
+    {"id": "xgg/gpt-6-luna", "name": "GPT 6 Luna", "price": "$0.0035 / 1M токенов", "short_price": "$0.0035/1M", "context": 400000},
+    {"id": "free/gpt-4o-mini", "name": "ChatGPT 4o mini [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
+    {"id": "test/selena-ai", "name": "SelenaAI [Experimental]", "price": "$0.01 / 1M токенов", "short_price": "$0.01/1M", "context": 1048576},
+    {"id": "muse/muse", "name": "Muse Spark 1.3", "price": "$0.01 / 1M токенов", "short_price": "$0.01/1M", "context": 256000},
+    {"id": "claude/fable", "name": "Claude Fable", "price": "$0.25 / 1M токенов", "short_price": "$0.25/1M", "context": 200000},
+    {"id": "claude/opus", "name": "Claude Opus", "price": "$0.10 / 1M токенов", "short_price": "$0.10/1M", "context": 200000},
+    {"id": "claude/sonnet", "name": "Claude Sonnet", "price": "$0.08 / 1M токенов", "short_price": "$0.08/1M", "context": 200000},
+    {"id": "claude/haiku", "name": "Claude Haiku", "price": "$0.03 / 1M токенов", "short_price": "$0.03/1M", "context": 200000},
+    {"id": "free/deepseek-flash", "name": "DeepSeek Flash [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
+    {"id": "free/deepseek-v4-pro", "name": "DeepSeek V4 Pro [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
+    {"id": "free/kimi-k3", "name": "Kimi K3 [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
+    {"id": "free/qwen3.8-flash", "name": "Qwen 3.8 Flash [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
+    {"id": "free/qwen3.8-max", "name": "Qwen 3.8 Max [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
+    {"id": "free/glm-5.3", "name": "GLM 5.3 [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
+    {"id": "free/glm-5.3-prime", "name": "GLM 5.3 Prime [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
+    {"id": "free/GLM-5.3-Flash", "name": "GLM 5.3 Flash [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
+    {"id": "free/muse-spark-open", "name": "Muse Spark Open [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
 ]
 
 
 def fetch_xiaoai_catalog(base_url: str, api_key: str) -> List[Dict[str, Any]]:
-    """Fetches real-time model catalog from XiaoAI router."""
+    """Fetches real-time model catalog and exact token pricing from XiaoAI router."""
     if not api_key:
         return FALLBACK_MODELS
 
     root_url = base_url.rstrip("/v1").rstrip("/")
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Zed-XiaoAI-Agent/1.0"
+    }
+
+    # 1. Fetch exact context limits from opencode endpoint
+    contexts = {}
     try:
-        req = urllib.request.Request(
-            f"{root_url}/api/key/models?format=opencode",
-            headers={"Authorization": f"Bearer {api_key}", "User-Agent": "Zed-XiaoAI-Agent/1.0"}
-        )
-        with urllib.request.urlopen(req, timeout=8) as r:
+        req_oc = urllib.request.Request(f"{root_url}/api/key/models?format=opencode", headers=headers)
+        with urllib.request.urlopen(req_oc, timeout=8) as r:
+            oc_data = json.loads(r.read().decode())
+            for mid, info in oc_data.items():
+                contexts[mid] = info.get("limit", {}).get("context", 200000)
+    except Exception:
+        pass
+
+    # 2. Fetch models with pricing multipliers from /api/key/models
+    try:
+        req_m = urllib.request.Request(f"{root_url}/api/key/models", headers=headers)
+        with urllib.request.urlopen(req_m, timeout=8) as r:
             data = json.loads(r.read().decode())
+            models = data.get("models", [])
             results = []
-            for mid, info in data.items():
-                name = info.get("name") or mid
-                ctx = info.get("limit", {}).get("context", 200000)
-                results.append({"id": mid, "name": name, "context": ctx})
+            for m in models:
+                mid = m["id"]
+                raw_name = m.get("name") or mid
+                mult = float(m.get("multiplier", 0.0))
+                if mult == 0.0:
+                    price_str = "Бесплатно ($0.00 / 1M)"
+                    short_price = "Free"
+                else:
+                    price_val = f"${mult:.4f}".rstrip("0").rstrip(".")
+                    price_str = f"{price_val} / 1M токенов"
+                    short_price = f"{price_val}/1M"
+
+                ctx = contexts.get(mid, 200000)
+                results.append({
+                    "id": mid,
+                    "name": raw_name,
+                    "price": price_str,
+                    "short_price": short_price,
+                    "multiplier": mult,
+                    "context": ctx
+                })
             if results:
                 return results
     except Exception:
         pass
 
+    # 3. Fallback to /v1/models if /api/key/models is unavailable
     try:
-        req = urllib.request.Request(
-            f"{base_url}/models",
-            headers={"Authorization": f"Bearer {api_key}", "User-Agent": "Zed-XiaoAI-Agent/1.0"}
-        )
-        with urllib.request.urlopen(req, timeout=8) as r:
+        req_v1 = urllib.request.Request(f"{base_url}/models", headers=headers)
+        with urllib.request.urlopen(req_v1, timeout=8) as r:
             data = json.loads(r.read().decode())["data"]
             results = []
             for m in data:
+                mid = m["id"]
                 results.append({
-                    "id": m["id"],
-                    "name": m.get("name") or m["id"],
+                    "id": mid,
+                    "name": m.get("name") or mid,
+                    "price": "По тарифу XiaoAI",
+                    "short_price": "XiaoAI",
                     "context": m.get("context_input", 200000)
                 })
             if results:
@@ -176,19 +209,28 @@ class XiaoAiAgent(acp.Agent):
             self.current_model = self.models_catalog[0]["id"]
 
     def build_config_options(self) -> List[SessionConfigOptionSelect]:
-        options = [
-            SessionConfigSelectOption(
-                value=m["id"],
-                name=m["name"],
-                description=f"Max context: {m.get('context', 'unknown')} tokens"
+        options = []
+        for m in self.models_catalog:
+            price_tag = m.get("short_price") or m.get("price", "")
+            clean_name = m["name"]
+            display_title = f"{clean_name} · [{price_tag}]"
+            ctx = m.get("context", 200000)
+            ctx_str = f"{ctx // 1000}k" if isinstance(ctx, int) and ctx >= 1000 else str(ctx)
+            desc = f"Прайс: {m.get('price', 'N/A')} | Контекст: {ctx_str} токенов"
+
+            options.append(
+                SessionConfigSelectOption(
+                    value=m["id"],
+                    name=display_title,
+                    description=desc
+                )
             )
-            for m in self.models_catalog
-        ]
+
         return [
             SessionConfigOptionSelect(
                 id="model",
                 name="Model",
-                description="Selected XiaoAI Model",
+                description="Выбранная модель XiaoAI (с ценой за 1M токенов)",
                 category="model",
                 current_value=self.current_model,
                 options=options
@@ -207,7 +249,7 @@ class XiaoAiAgent(acp.Agent):
             protocol_version=protocol_version,
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.0.1",
+                version="1.0.3",
                 title="XiaoAI Agent"
             )
         )
@@ -297,7 +339,7 @@ class XiaoAiAgent(acp.Agent):
 
         # Slash command: /sync
         if user_text.startswith("/sync"):
-            await self.send_text_chunk(session_id, "🔄 Опрашиваю роутер XiaoAI и обновляю каталог моделей...\n")
+            await self.send_text_chunk(session_id, "🔄 Опрашиваю роутер XiaoAI и обновляю каталог и прайс-лист...\n")
             self.refresh_models()
             cnt = len(self.models_catalog)
             await self.send_text_chunk(session_id, f"✅ Каталог успешно обновлен! Всего моделей доступно: {cnt}.\n")
@@ -331,9 +373,15 @@ class XiaoAiAgent(acp.Agent):
 
         # Slash command: /models
         if user_text.startswith("/models"):
-            await self.send_text_chunk(session_id, "📋 **Доступные модели XiaoAI:**\n\n")
+            await self.send_text_chunk(session_id, "### 📋 Официальный прайс-лист моделей XiaoAI\n\n")
+            await self.send_text_chunk(session_id, "Тарификация роутера: **1 M = 1 000 000 токенов = $1.00 base**.\n\n")
+            await self.send_text_chunk(session_id, "| Модель | Прайс за 1M токенов | Контекст | ID модели |\n")
+            await self.send_text_chunk(session_id, "|:---|:---:|:---:|:---|\n")
             for m in self.models_catalog:
-                await self.send_text_chunk(session_id, f"- **`{m['id']}`** — {m['name']} *(контекст: {m.get('context', 'N/A')})*\n")
+                ctx = m.get("context", 200000)
+                ctx_str = f"{ctx // 1000}k" if isinstance(ctx, int) and ctx >= 1000 else str(ctx)
+                price = m.get("price", "N/A")
+                await self.send_text_chunk(session_id, f"| **{m['name']}** | `{price}` | {ctx_str} | `{m['id']}` |\n")
             return PromptResponse(stop_reason="end_turn")
 
         # Regular Chat Turn
