@@ -487,7 +487,7 @@ class XiaoAiAgent(acp.Agent):
             ),
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.1.3",
+                version="1.1.4",
                 title="XiaoAI Agent"
             )
         )
@@ -710,7 +710,31 @@ class XiaoAiAgent(acp.Agent):
 
             def perform_stream():
                 chunks = []
-                with urllib.request.urlopen(req, timeout=60) as resp:
+                try:
+                    resp = urllib.request.urlopen(req, timeout=60)
+                except urllib.error.HTTPError as e:
+                    # If upstream model does not support reasoning_effort/thinking, automatically fallback
+                    if e.code == 400 and ("reasoning_effort" in payload_dict or "thinking" in payload_dict):
+                        fallback_dict = {
+                            "model": self.current_model,
+                            "messages": payload_messages,
+                            "stream": True,
+                            "stream_options": {"include_usage": True}
+                        }
+                        req_fb = urllib.request.Request(
+                            endpoint,
+                            data=json.dumps(fallback_dict).encode("utf-8"),
+                            headers={
+                                "Authorization": f"Bearer {key}",
+                                "Content-Type": "application/json",
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Zed-XiaoAI-Agent/1.0"
+                            }
+                        )
+                        resp = urllib.request.urlopen(req_fb, timeout=60)
+                    else:
+                        raise
+
+                with resp:
                     for line in resp:
                         line = line.decode("utf-8", errors="replace").strip()
                         if line.startswith("data: "):
@@ -801,7 +825,7 @@ if __name__ == "__main__":
 class InstallerGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("XiaoAI Agent v1.1.3 · Установщик и управление для Zed")
+        self.title("XiaoAI Agent v1.1.4 · Установщик и управление для Zed")
         self.geometry("660x680")
         self.resizable(False, False)
         self.configure(bg=DARK_BG)
@@ -863,7 +887,7 @@ class InstallerGUI(tk.Tk):
         header = ttk.Frame(main)
         header.pack(fill=tk.X, pady=(0, 12))
 
-        title_lbl = tk.Label(header, text="⚡ XiaoAI External Agent v1.1.3", font=("Segoe UI", 18, "bold"), fg=ACCENT_BLUE, bg=DARK_BG)
+        title_lbl = tk.Label(header, text="⚡ XiaoAI External Agent v1.1.4", font=("Segoe UI", 18, "bold"), fg=ACCENT_BLUE, bg=DARK_BG)
         title_lbl.pack(anchor="w")
 
         sub_lbl = tk.Label(header, text="Установка, синхронизация и управление роутером XiaoAI в редакторе Zed", font=("Segoe UI", 10), fg=TEXT_MUTED, bg=DARK_BG)
