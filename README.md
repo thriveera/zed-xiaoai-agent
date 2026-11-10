@@ -35,7 +35,7 @@
 ---
 
 ### Вариант 2: Через архив скриптов (Windows / macOS / Linux)
-1. Скачайте архив **`zed-xiaoai-agent-v1.1.1.zip`** со страницы [Releases](https://github.com/thriveera/zed-xiaoai-agent/releases).
+1. Скачайте архив **`zed-xiaoai-agent-v1.1.2.zip`** со страницы [Releases](https://github.com/thriveera/zed-xiaoai-agent/releases).
 2. Распакуйте и запустите:
    - **Windows**: `install.bat`
    - **macOS / Linux**: `./install.sh`
