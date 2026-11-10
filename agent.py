@@ -1,6 +1,9 @@
 ﻿"""
 XiaoAI ACP Agent for Zed Editor
 An Agent Client Protocol (ACP) server connecting Zed to the XiaoAI model router.
+
+Author: thriveera (https://github.com/thriveera)
+License: MIT
 """
 
 import os
@@ -46,7 +49,39 @@ def load_env_file():
 load_env_file()
 
 DEFAULT_BASE_URL = os.environ.get("XIAOAI_BASE_URL", "https://ai.itisxiao.cc/v1")
-DEFAULT_KEY = os.environ.get("XIAOAI_API_KEY", "")
+
+
+def get_secure_api_key() -> str:
+    """
+    Retrieves the API key securely.
+    Priority:
+    1. OS Encrypted Keyring (Windows Credential Locker / macOS Keychain / Linux SecretService)
+    2. Environment variable XIAOAI_API_KEY
+    """
+    try:
+        import keyring
+        key = keyring.get_password("xiaoai-agent", "api_key")
+        if key and key.strip():
+            return key.strip()
+    except Exception:
+        pass
+
+    env_key = os.environ.get("XIAOAI_API_KEY")
+    if env_key and env_key.strip():
+        return env_key.strip()
+
+    return ""
+
+
+def set_secure_api_key(key: str) -> bool:
+    """Stores the API key into the OS encrypted credential store."""
+    try:
+        import keyring
+        keyring.set_password("xiaoai-agent", "api_key", key.strip())
+        return True
+    except Exception as e:
+        print(f"Error saving to keyring: {e}", file=sys.stderr)
+        return False
 
 
 FALLBACK_MODELS = [
@@ -123,7 +158,6 @@ class XiaoAiAgent(acp.Agent):
         super().__init__()
         self.conn: Optional[acp.Client] = None
         self.base_url = DEFAULT_BASE_URL
-        self.api_key = DEFAULT_KEY
         self.models_catalog: List[Dict[str, Any]] = []
         self.current_model = "xgg/gpt-6.1-sol"
         self.current_mode = "code"
@@ -133,7 +167,7 @@ class XiaoAiAgent(acp.Agent):
         self.conn = conn
 
     def get_api_key(self) -> str:
-        return os.environ.get("XIAOAI_API_KEY", self.api_key)
+        return get_secure_api_key()
 
     def refresh_models(self):
         key = self.get_api_key()
@@ -173,7 +207,7 @@ class XiaoAiAgent(acp.Agent):
             protocol_version=protocol_version,
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.0.0",
+                version="1.0.1",
                 title="XiaoAI Agent"
             )
         )
@@ -233,7 +267,6 @@ class XiaoAiAgent(acp.Agent):
         )
 
     async def prompt(self, session_id: str, prompt: List[Any], **kwargs: Any) -> PromptResponse:
-        # Extract user text
         user_text = ""
         for block in prompt:
             if hasattr(block, "text"):
@@ -243,7 +276,26 @@ class XiaoAiAgent(acp.Agent):
 
         user_text = user_text.strip()
 
-        # Handle built-in slash commands
+        # Slash command: /setkey <key>
+        if user_text.startswith("/setkey"):
+            parts = user_text.split(maxsplit=1)
+            if len(parts) > 1 and parts[1].strip():
+                new_key = parts[1].strip()
+                if set_secure_api_key(new_key):
+                    await self.send_text_chunk(session_id, "🔒 API-ключ успешно сохранён в зашифрованное хранилище системы (Keyring)!\n")
+                    self.refresh_models()
+                    if self.conn:
+                        await self.conn.session_update(
+                            session_id=session_id,
+                            update=ConfigOptionUpdate(config_options=self.build_config_options())
+                        )
+                else:
+                    await self.send_text_chunk(session_id, "❌ Не удалось сохранить ключ в хранилище системы.\n")
+            else:
+                await self.send_text_chunk(session_id, "Использование: `/setkey <ваш_ключ>`\n")
+            return PromptResponse(stop_reason="end_turn")
+
+        # Slash command: /sync
         if user_text.startswith("/sync"):
             await self.send_text_chunk(session_id, "🔄 Опрашиваю роутер XiaoAI и обновляю каталог моделей...\n")
             self.refresh_models()
@@ -256,10 +308,11 @@ class XiaoAiAgent(acp.Agent):
                 )
             return PromptResponse(stop_reason="end_turn")
 
+        # Slash command: /status
         if user_text.startswith("/status"):
             key = self.get_api_key()
             if not key:
-                await self.send_text_chunk(session_id, "⚠️ API-ключ XIAOAI_API_KEY не установлен.\n")
+                await self.send_text_chunk(session_id, "⚠️ API-ключ не найден. Используйте `/setkey <ключ>` для его сохранения в защищённое хранилище.\n")
                 return PromptResponse(stop_reason="end_turn")
             root_url = self.base_url.rstrip("/v1").rstrip("/")
             try:
@@ -271,11 +324,12 @@ class XiaoAiAgent(acp.Agent):
                     m = re.search(r"Account balance.*?<span>(.*?)</span>", html, re.DOTALL)
                     if m:
                         bal = f"Баланс: {m.group(1).strip()}"
-                    await self.send_text_chunk(session_id, f"🟢 Статус XiaoAI: Ключ активен. {bal}\nТекущая модель: `{self.current_model}`\n")
+                    await self.send_text_chunk(session_id, f"🟢 **Статус XiaoAI:** Ключ активен. {bal}\nТекущая модель: `{self.current_model}`\nХранилище: Зашифрованное (Keyring/OS Vault)\n")
             except Exception as e:
                 await self.send_text_chunk(session_id, f"❌ Ошибка проверки ключа: {e}\n")
             return PromptResponse(stop_reason="end_turn")
 
+        # Slash command: /models
         if user_text.startswith("/models"):
             await self.send_text_chunk(session_id, "📋 **Доступные модели XiaoAI:**\n\n")
             for m in self.models_catalog:
@@ -286,7 +340,6 @@ class XiaoAiAgent(acp.Agent):
         history = self.session_history.setdefault(session_id, [])
         history.append({"role": "user", "content": user_text})
 
-        # Prepend system instruction based on mode
         system_prompts = {
             "code": "You are XiaoAI Agent, an expert AI programming assistant inside the Zed editor. Provide clean, well-tested code and direct solutions.",
             "ask": "You are XiaoAI Agent inside the Zed editor. Answer questions clearly, accurately, and conceptually.",
@@ -300,11 +353,11 @@ class XiaoAiAgent(acp.Agent):
             await self.send_text_chunk(
                 session_id,
                 "⚠️ **Ошибка:** API-ключ XiaoAI не обнаружен.\n"
-                "Пожалуйста, задайте переменную окружения `XIAOAI_API_KEY` или укажите её в файле `.env`.\n"
+                "Вы можете сохранить его прямо в чате командой:\n"
+                "`/setkey <ваш_ключ>` (он будет надёжно зашифрован в хранилище системы).\n"
             )
             return PromptResponse(stop_reason="end_turn")
 
-        # Make streaming request to XiaoAI
         try:
             req_data = json.dumps({
                 "model": self.current_model,
@@ -347,12 +400,10 @@ class XiaoAiAgent(acp.Agent):
             stream_chunks = await loop.run_in_executor(None, perform_stream)
 
             for delta in stream_chunks:
-                # Thought / Reasoning stream
                 thought = delta.get("reasoning_content") or delta.get("thought")
                 if thought:
                     await self.send_thought_chunk(session_id, thought)
 
-                # Content stream
                 content = delta.get("content")
                 if content:
                     assistant_reply.append(content)
