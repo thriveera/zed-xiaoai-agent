@@ -27,7 +27,7 @@ from acp.schema import (
     SetSessionModeRequest, SetSessionModeResponse,
     SessionConfigOptionSelect, SessionConfigSelectOption,
     SessionMode, SessionModeState,
-    AgentMessageChunk, AgentThoughtChunk, TextContentBlock,
+    AgentMessageChunk, AgentThoughtChunk, TextContentBlock, UsageUpdate,
     ConfigOptionUpdate
 )
 
@@ -227,6 +227,9 @@ class XiaoAiAgent(acp.Agent):
         self.current_mode = "code"
         self.session_history: Dict[str, List[Dict[str, str]]] = {}
         self.session_cwds: Dict[str, str] = {}
+        self.session_usage: Dict[str, int] = {}
+        self.thinking_level = self.config.get("thinking_level", "high")
+        self.mode = self.config.get("mode", "yolo")
 
     def on_connect(self, conn: acp.Client) -> None:
         self.conn = conn
@@ -313,20 +316,72 @@ class XiaoAiAgent(acp.Agent):
             )
         ]
 
+        thinking_options = [
+            SessionConfigSelectOption(
+                value="low",
+                name="Low",
+                description="Быстрый ответ с минимальным рассуждением"
+            ),
+            SessionConfigSelectOption(
+                value="medium",
+                name="Medium",
+                description="Сбалансированная глубина рассуждений"
+            ),
+            SessionConfigSelectOption(
+                value="high",
+                name="High",
+                description="Максимальная глубина рассуждений для сложных задач"
+            )
+        ]
+
+        mode_options = [
+            SessionConfigSelectOption(
+                value="default",
+                name="Default",
+                description="Стандартный режим диалога"
+            ),
+            SessionConfigSelectOption(
+                value="auto_edit",
+                name="Auto Edit",
+                description="Автоматическое применение предложенных правок"
+            ),
+            SessionConfigSelectOption(
+                value="yolo",
+                name="YOLO",
+                description="Максимальная автономность агента без лишних подтверждений"
+            )
+        ]
+
         return [
             SessionConfigOptionSelect(
                 id="model",
-                name="Модель XiaoAI",
+                name="Model",
                 description="Выбор модели с актуальной ценой за 1M токенов",
                 category="model",
                 current_value=self.current_model,
                 options=model_options
             ),
             SessionConfigOptionSelect(
+                id="thinking_level",
+                name="Thinking Level",
+                description="Уровень рассуждений нейросети (Thinking / Reasoning Effort)",
+                category="thought_level",
+                current_value=self.thinking_level,
+                options=thinking_options
+            ),
+            SessionConfigOptionSelect(
+                id="mode",
+                name="Mode",
+                description="Режим работы агента",
+                category="mode",
+                current_value=self.mode,
+                options=mode_options
+            ),
+            SessionConfigOptionSelect(
                 id="sync_interval",
-                name="Синхронизация каталога и прайсов",
+                name="Sync Interval",
                 description="Частота автообновления каталога моделей, контекста и цен",
-                category="sync",
+                category="model_config",
                 current_value=self.sync_interval,
                 options=sync_options
             )
@@ -401,7 +456,7 @@ class XiaoAiAgent(acp.Agent):
             ),
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.1.2",
+                version="1.1.3",
                 title="XiaoAI Agent"
             )
         )
@@ -443,6 +498,14 @@ class XiaoAiAgent(acp.Agent):
     ) -> SetSessionConfigOptionResponse:
         if config_id == "model":
             self.current_model = str(value)
+        elif config_id == "thinking_level":
+            self.thinking_level = str(value)
+            self.config["thinking_level"] = self.thinking_level
+            save_agent_config(self.config)
+        elif config_id == "mode":
+            self.mode = str(value)
+            self.config["mode"] = self.mode
+            save_agent_config(self.config)
         elif config_id == "sync_interval":
             self.sync_interval = str(value)
             self.config["sync_interval"] = self.sync_interval
@@ -585,11 +648,19 @@ class XiaoAiAgent(acp.Agent):
             return PromptResponse(stop_reason="end_turn")
 
         try:
-            req_data = json.dumps({
+            payload_dict = {
                 "model": self.current_model,
                 "messages": payload_messages,
-                "stream": True
-            }).encode("utf-8")
+                "stream": True,
+                "stream_options": {"include_usage": True}
+            }
+            if self.thinking_level in ["low", "medium", "high"]:
+                payload_dict["reasoning_effort"] = self.thinking_level
+                if "claude" in self.current_model.lower():
+                    budgets = {"low": 2048, "medium": 8192, "high": 24576}
+                    payload_dict["thinking"] = {"type": "enabled", "budget_tokens": budgets.get(self.thinking_level, 8192)}
+
+            req_data = json.dumps(payload_dict).encode("utf-8")
 
             endpoint = f"{self.base_url.rstrip('/')}/chat/completions"
             req = urllib.request.Request(
@@ -604,6 +675,7 @@ class XiaoAiAgent(acp.Agent):
 
             assistant_reply = []
             loop = asyncio.get_event_loop()
+            token_stats = {"total_tokens": 0}
 
             def perform_stream():
                 chunks = []
@@ -616,6 +688,8 @@ class XiaoAiAgent(acp.Agent):
                                 break
                             try:
                                 c = json.loads(raw_data)
+                                if c.get("usage"):
+                                    token_stats["total_tokens"] = c["usage"].get("total_tokens", token_stats["total_tokens"])
                                 if c.get("choices"):
                                     delta = c["choices"][0].get("delta", {})
                                     chunks.append(delta)
@@ -637,6 +711,30 @@ class XiaoAiAgent(acp.Agent):
 
             full_reply = "".join(assistant_reply)
             history.append({"role": "assistant", "content": full_reply})
+
+            # Update context usage gauge in Zed
+            ctx_size = 200000
+            for m in self.models_catalog:
+                if m["id"] == self.current_model:
+                    ctx_size = m.get("context", 200000)
+                    break
+
+            if token_stats["total_tokens"] > 0:
+                self.session_usage[session_id] = token_stats["total_tokens"]
+            else:
+                self.session_usage[session_id] = self.session_usage.get(session_id, 0) + (len(user_text) + len(full_reply)) // 4
+
+            if self.conn:
+                try:
+                    await self.conn.session_update(
+                        session_id=session_id,
+                        update=UsageUpdate(
+                            used=self.session_usage[session_id],
+                            size=ctx_size
+                        )
+                    )
+                except Exception:
+                    pass
 
         except urllib.error.HTTPError as e:
             err_body = ""
