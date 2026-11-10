@@ -116,26 +116,26 @@ def set_secure_api_key(key: str) -> bool:
 
 
 FALLBACK_MODELS = [
-    {"id": "xgg/gpt-6.1-sol", "name": "GPT 6.1 Sol", "clean_name": "GPT 6.1 Sol", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 400000},
-    {"id": "xgg/gpt-6-astra", "name": "GPT 6 Astra", "clean_name": "GPT 6 Astra", "price": "$0.20 / 1M токенов", "short_price": "$0.20 / 1M", "context": 400000},
-    {"id": "xgg/gpt-6-sol", "name": "GPT 6 Sol", "clean_name": "GPT 6 Sol", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 400000},
-    {"id": "xgg/gpt-6-luna", "name": "GPT 6 Luna", "clean_name": "GPT 6 Luna", "price": "$0.0035 / 1M токенов", "short_price": "$0.0035 / 1M", "context": 400000},
-    {"id": "free/gpt-4o-mini", "name": "ChatGPT 4o mini", "clean_name": "ChatGPT 4o mini", "price": "Free", "short_price": "Free", "context": 1000000},
-    {"id": "test/selena-ai", "name": "SelenaAI", "clean_name": "SelenaAI", "price": "$0.01 / 1M токенов", "short_price": "$0.01 / 1M", "context": 1048576},
-    {"id": "muse/muse", "name": "Muse Spark 1.3", "clean_name": "Muse Spark 1.3", "price": "$0.01 / 1M токенов", "short_price": "$0.01 / 1M", "context": 256000},
-    {"id": "claude/fable", "name": "Claude Fable", "clean_name": "Claude Fable", "price": "$0.25 / 1M токенов", "short_price": "$0.25 / 1M", "context": 200000},
-    {"id": "claude/opus", "name": "Claude Opus", "clean_name": "Claude Opus", "price": "$0.10 / 1M токенов", "short_price": "$0.10 / 1M", "context": 200000},
-    {"id": "claude/sonnet", "name": "Claude Sonnet", "clean_name": "Claude Sonnet", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 200000},
-    {"id": "claude/haiku", "name": "Claude Haiku", "clean_name": "Claude Haiku", "price": "$0.03 / 1M токенов", "short_price": "$0.03 / 1M", "context": 200000},
-    {"id": "free/deepseek-flash", "name": "DeepSeek Flash", "clean_name": "DeepSeek Flash", "price": "Free", "short_price": "Free", "context": 1000000},
-    {"id": "free/deepseek-v4-pro", "name": "DeepSeek V4 Pro", "clean_name": "DeepSeek V4 Pro", "price": "Free", "short_price": "Free", "context": 1000000},
-    {"id": "free/kimi-k3", "name": "Kimi K3", "clean_name": "Kimi K3", "price": "Free", "short_price": "Free", "context": 1000000},
-    {"id": "free/qwen3.8-flash", "name": "Qwen 3.8 Flash", "clean_name": "Qwen 3.8 Flash", "price": "Free", "short_price": "Free", "context": 1000000},
-    {"id": "free/qwen3.8-max", "name": "Qwen 3.8 Max", "clean_name": "Qwen 3.8 Max", "price": "Free", "short_price": "Free", "context": 1000000},
-    {"id": "free/glm-5.3", "name": "GLM 5.3", "clean_name": "GLM 5.3", "price": "Free", "short_price": "Free", "context": 1000000},
-    {"id": "free/glm-5.3-prime", "name": "GLM 5.3 Prime", "clean_name": "GLM 5.3 Prime", "price": "Free", "short_price": "Free", "context": 1000000},
-    {"id": "free/GLM-5.3-Flash", "name": "GLM 5.3 Flash", "clean_name": "GLM 5.3 Flash", "price": "Free", "short_price": "Free", "context": 1000000},
-    {"id": "free/muse-spark-open", "name": "Muse Spark Open", "clean_name": "Muse Spark Open", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "xgg/gpt-6.1-sol", "name": "GPT 6.1 Sol", "clean_name": "GPT 6.1 Sol", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 400000, "output": 128000, "reasoning": True},
+    {"id": "xgg/gpt-6-astra", "name": "GPT 6 Astra", "clean_name": "GPT 6 Astra", "price": "$0.20 / 1M токенов", "short_price": "$0.20 / 1M", "context": 400000, "output": 64000, "reasoning": True},
+    {"id": "xgg/gpt-6-sol", "name": "GPT 6 Sol", "clean_name": "GPT 6 Sol", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 400000, "output": 64000, "reasoning": True},
+    {"id": "xgg/gpt-6-luna", "name": "GPT 6 Luna", "clean_name": "GPT 6 Luna", "price": "$0.0035 / 1M токенов", "short_price": "$0.0035 / 1M", "context": 400000, "output": 32000, "reasoning": True},
+    {"id": "free/gpt-4o-mini", "name": "ChatGPT 4o mini", "clean_name": "ChatGPT 4o mini", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
+    {"id": "test/selena-ai", "name": "SelenaAI", "clean_name": "SelenaAI", "price": "$0.01 / 1M токенов", "short_price": "$0.01 / 1M", "context": 1048576, "output": 16000, "reasoning": False},
+    {"id": "muse/muse", "name": "Muse Spark 1.3", "clean_name": "Muse Spark 1.3", "price": "$0.01 / 1M токенов", "short_price": "$0.01 / 1M", "context": 256000, "output": 16000, "reasoning": False},
+    {"id": "claude/fable", "name": "Claude Fable", "clean_name": "Claude Fable", "price": "$0.25 / 1M токенов", "short_price": "$0.25 / 1M", "context": 200000, "output": 8192, "reasoning": False},
+    {"id": "claude/opus", "name": "Claude Opus", "clean_name": "Claude Opus", "price": "$0.10 / 1M токенов", "short_price": "$0.10 / 1M", "context": 200000, "output": 8192, "reasoning": False},
+    {"id": "claude/sonnet", "name": "Claude Sonnet", "clean_name": "Claude Sonnet", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 200000, "output": 8192, "reasoning": False},
+    {"id": "claude/haiku", "name": "Claude Haiku", "clean_name": "Claude Haiku", "price": "$0.03 / 1M токенов", "short_price": "$0.03 / 1M", "context": 200000, "output": 8192, "reasoning": False},
+    {"id": "free/deepseek-flash", "name": "DeepSeek Flash", "clean_name": "DeepSeek Flash", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
+    {"id": "free/deepseek-v4-pro", "name": "DeepSeek V4 Pro", "clean_name": "DeepSeek V4 Pro", "price": "Free", "short_price": "Free", "context": 1000000, "output": 32000, "reasoning": True},
+    {"id": "free/kimi-k3", "name": "Kimi K3", "clean_name": "Kimi K3", "price": "Free", "short_price": "Free", "context": 1000000, "output": 32000, "reasoning": True},
+    {"id": "free/qwen3.8-flash", "name": "Qwen 3.8 Flash", "clean_name": "Qwen 3.8 Flash", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
+    {"id": "free/qwen3.8-max", "name": "Qwen 3.8 Max", "clean_name": "Qwen 3.8 Max", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
+    {"id": "free/glm-5.3", "name": "GLM 5.3", "clean_name": "GLM 5.3", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
+    {"id": "free/glm-5.3-prime", "name": "GLM 5.3 Prime", "clean_name": "GLM 5.3 Prime", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
+    {"id": "free/GLM-5.3-Flash", "name": "GLM 5.3 Flash", "clean_name": "GLM 5.3 Flash", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
+    {"id": "free/muse-spark-open", "name": "Muse Spark Open", "clean_name": "Muse Spark Open", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
 ]
 
 
@@ -280,6 +280,26 @@ class XiaoAiAgent(acp.Agent):
         if not any(m["id"] == self.current_model for m in self.models_catalog) and self.models_catalog:
             self.current_model = self.models_catalog[0]["id"]
 
+    def model_supports_reasoning(self, model_id: str) -> bool:
+        """Determines if a model supports extended thinking / reasoning."""
+        mid = model_id.lower()
+        for m in self.models_catalog:
+            if m.get("id") == model_id:
+                if m.get("reasoning") is True:
+                    return True
+                if m.get("reasoning") is False:
+                    return False
+        # Fallback by model ID families
+        # Claude 3 and 3.5 do NOT support thinking; only Claude 3.7 does
+        if "claude" in mid and not ("3-7" in mid or "3.7" in mid):
+            return False
+        if any(x in mid for x in ["gpt-4o-mini", "selena", "muse", "flash", "glm-5"]):
+            return False
+        if any(x in mid for x in ["gpt-6", "deepseek-v4", "kimi-k3", "claude-3-7", "claude-3.7", "o1", "o3", "r1", "qwq"]):
+            return True
+        return False
+
+
     def build_config_options(self) -> List[SessionConfigOptionSelect]:
         model_options = []
         for m in self.models_catalog:
@@ -324,7 +344,8 @@ class XiaoAiAgent(acp.Agent):
             )
         ]
 
-        # Determine model output capacity and min/max bounds
+        # Determine model capabilities and bounds
+        supports_reasoning = self.model_supports_reasoning(self.current_model)
         cur_output = 32000
         for m in self.models_catalog:
             if m["id"] == self.current_model:
@@ -334,60 +355,77 @@ class XiaoAiAgent(acp.Agent):
         min_allowed = 1024
         max_allowed = cur_output
 
-        # Clamp custom budget if set
-        if self.custom_thinking_budget:
-            if self.custom_thinking_budget > max_allowed:
-                self.custom_thinking_budget = max_allowed
-            elif self.custom_thinking_budget < min_allowed:
-                self.custom_thinking_budget = min_allowed
+        if not supports_reasoning:
+            thinking_options = [
+                SessionConfigSelectOption(
+                    value="off",
+                    name="Off (Не поддерживается моделью)",
+                    description="Данная модель не имеет режима рассуждений и работает только в быстром стандартном режиме"
+                )
+            ]
+            current_thinking_value = "off"
+        else:
+            # Clamp custom budget if set
+            if self.custom_thinking_budget:
+                if self.custom_thinking_budget > max_allowed:
+                    self.custom_thinking_budget = max_allowed
+                elif self.custom_thinking_budget < min_allowed:
+                    self.custom_thinking_budget = min_allowed
 
-        custom_val = self.custom_thinking_budget or min(12000, max_allowed)
-        max_label = f"Max ({cur_output // 1000}k)" if cur_output >= 1000 else f"Max ({cur_output})"
-        custom_label = f"Custom ({custom_val})"
-        custom_desc = f"Пользовательский бюджет токенов: {custom_val} [мин: {min_allowed}, макс: {max_allowed}]"
+            custom_val = self.custom_thinking_budget or min(12000, max_allowed)
+            max_label = f"Max ({cur_output // 1000}k)" if cur_output >= 1000 else f"Max ({cur_output})"
+            custom_label = f"Custom ({custom_val})"
+            custom_desc = f"Пользовательский бюджет токенов: {custom_val} [мин: {min_allowed}, макс: {max_allowed}]"
 
-        thinking_options = [
-            SessionConfigSelectOption(
-                value="off",
-                name="Off (0)",
-                description="Отключить рассуждения (максимальная скорость и экономия токенов)"
-            ),
-            SessionConfigSelectOption(
-                value="minimal",
-                name="Minimal (1k)",
-                description="Минимальный уровень рассуждений (~1 024 токена)"
-            ),
-            SessionConfigSelectOption(
-                value="low",
-                name="Low (2k)",
-                description="Базовый уровень рассуждений (~2 048 токенов)"
-            ),
-            SessionConfigSelectOption(
-                value="medium",
-                name="Medium (8k)",
-                description="Сбалансированная глубина рассуждений (~8 192 токена)"
-            ),
-            SessionConfigSelectOption(
-                value="high",
-                name="High (16k)",
-                description="Глубокое рассуждение для сложных задач (~16 384 токена)"
-            ),
-            SessionConfigSelectOption(
-                value="ultra",
-                name="Ultra (32k)",
-                description="Ультра-глубокое рассуждение и верификация (~32 768 токенов)"
-            ),
-            SessionConfigSelectOption(
-                value="max",
-                name=max_label,
-                description=f"Максимально допустимый лимит генерации модели (~{cur_output} токенов)"
-            ),
-            SessionConfigSelectOption(
-                value="custom",
-                name=custom_label,
-                description=custom_desc
-            )
-        ]
+            thinking_options = [
+                SessionConfigSelectOption(
+                    value="off",
+                    name="Off (0)",
+                    description="Отключить рассуждения (максимальная скорость и экономия токенов)"
+                ),
+                SessionConfigSelectOption(
+                    value="minimal",
+                    name="Minimal (1k)",
+                    description="Минимальный уровень рассуждений (~1 024 токена)"
+                ),
+                SessionConfigSelectOption(
+                    value="low",
+                    name="Low (2k)",
+                    description="Базовый уровень рассуждений (~2 048 токенов)"
+                ),
+                SessionConfigSelectOption(
+                    value="medium",
+                    name="Medium (8k)",
+                    description="Сбалансированная глубина рассуждений (~8 192 токена)"
+                ),
+                SessionConfigSelectOption(
+                    value="high",
+                    name="High (16k)",
+                    description="Глубокое рассуждение для сложных задач (~16 384 токена)"
+                ),
+                SessionConfigSelectOption(
+                    value="ultra",
+                    name="Ultra (32k)",
+                    description="Ультра-глубокое рассуждение и верификация (~32 768 токенов)"
+                ),
+                SessionConfigSelectOption(
+                    value="max",
+                    name=max_label,
+                    description=f"Максимально допустимый лимит генерации модели (~{cur_output} токенов)"
+                ),
+                SessionConfigSelectOption(
+                    value="custom",
+                    name=custom_label,
+                    description=custom_desc
+                )
+            ]
+
+            if self.thinking_level == "custom" or str(self.thinking_level).startswith("custom"):
+                current_thinking_value = "custom"
+            elif any(o.value == self.thinking_level for o in thinking_options):
+                current_thinking_value = self.thinking_level
+            else:
+                current_thinking_value = "medium" 
 
         mode_options = [
             SessionConfigSelectOption(
@@ -421,7 +459,7 @@ class XiaoAiAgent(acp.Agent):
                 name="Thinking Level",
                 description="Уровень рассуждений нейросети (Thinking / Reasoning Effort)",
                 category="thought_level",
-                current_value="custom" if (self.thinking_level == "custom" or str(self.thinking_level).startswith("custom")) else (self.thinking_level if any(o.value == self.thinking_level for o in thinking_options) else "medium"),
+                current_value=current_thinking_value,
                 options=thinking_options
             ),
             SessionConfigOptionSelect(
@@ -511,7 +549,7 @@ class XiaoAiAgent(acp.Agent):
             ),
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.1.6",
+                version="1.1.7",
                 title="XiaoAI Agent"
             )
         )
@@ -553,6 +591,16 @@ class XiaoAiAgent(acp.Agent):
     ) -> SetSessionConfigOptionResponse:
         if config_id == "model":
             self.current_model = str(value)
+            supports_reasoning = self.model_supports_reasoning(self.current_model)
+            if not supports_reasoning:
+                self.thinking_level = "off"
+            else:
+                # Restore previous active preference if switching back to a reasoning model
+                saved = self.config.get("saved_thinking_level", "medium")
+                self.thinking_level = saved if saved != "off" else "medium"
+            self.config["model"] = self.current_model
+            self.config["thinking_level"] = self.thinking_level
+            save_agent_config(self.config)
         elif config_id == "thinking_level":
             val_str = str(value)
             cur_output = 32000
@@ -576,6 +624,8 @@ class XiaoAiAgent(acp.Agent):
             else:
                 self.thinking_level = val_str
 
+            if self.thinking_level != "off":
+                self.config["saved_thinking_level"] = self.thinking_level
             self.config["thinking_level"] = self.thinking_level
             self.config["custom_thinking_budget"] = self.custom_thinking_budget
             save_agent_config(self.config)
@@ -675,6 +725,14 @@ class XiaoAiAgent(acp.Agent):
             custom_arg = user_lower[7:].strip()
 
         if custom_arg is not None:
+            supports_reasoning = self.model_supports_reasoning(self.current_model)
+            if not supports_reasoning:
+                await self.send_text_chunk(
+                    session_id,
+                    f"ℹ️ Модель **{self.current_model}** не поддерживает режим рассуждений (работает в стандартном прямом режиме).\n"
+                    f"Для использования Thinking/Reasoning переключитесь на модель с поддержкой рассуждений (например, **GPT 6.1 Sol**, **DeepSeek V4 Pro**, **Kimi K3**).\n"
+                )
+                return PromptResponse(stop_reason="end_turn")
             cur_output = 32000
             for m in self.models_catalog:
                 if m["id"] == self.current_model:
@@ -820,7 +878,14 @@ class XiaoAiAgent(acp.Agent):
                 "max": "high"
             }
 
-            if self.thinking_level != "off":
+            supports_reasoning = self.model_supports_reasoning(self.current_model)
+            is_claude = "claude" in self.current_model.lower()
+
+            # Claude API strictly requires max_tokens on all requests
+            if is_claude:
+                payload_dict["max_tokens"] = min(cur_output, 8192)
+
+            if supports_reasoning and self.thinking_level != "off":
                 cur_output = 32000
                 for m in self.models_catalog:
                     if m["id"] == self.current_model:
@@ -841,10 +906,12 @@ class XiaoAiAgent(acp.Agent):
                     b_val = budget_map.get(self.thinking_level, 8192)
                     eff = effort_map.get(self.thinking_level, "medium")
 
-                payload_dict["reasoning_effort"] = eff
-                if "claude" in self.current_model.lower():
+                if is_claude:
+                    # Extended thinking only for Claude models that support reasoning (Claude 3.7)
                     payload_dict["thinking"] = {"type": "enabled", "budget_tokens": b_val}
                     payload_dict["max_tokens"] = max(b_val + 4096, max_allowed)
+                else:
+                    payload_dict["reasoning_effort"] = eff
 
             req_data = json.dumps(payload_dict).encode("utf-8")
 
@@ -876,6 +943,8 @@ class XiaoAiAgent(acp.Agent):
                             "stream": True,
                             "stream_options": {"include_usage": True}
                         }
+                        if is_claude:
+                            fallback_dict["max_tokens"] = 4096
                         req_fb = urllib.request.Request(
                             endpoint,
                             data=json.dumps(fallback_dict).encode("utf-8"),
@@ -952,10 +1021,22 @@ class XiaoAiAgent(acp.Agent):
                 err_body = e.read().decode("utf-8", errors="replace")
             except Exception:
                 pass
-            await self.send_text_chunk(
-                session_id,
-                f"❌ **Ошибка XiaoAI API ({e.code}):** {e.reason}\n`{err_body}`\n"
-            )
+            if e.code == 402 or "insufficient" in err_body.lower() or "balance" in err_body.lower():
+                msg = (
+                    f"💳 **Недостаточно средств на балансе XiaoAI ({e.code}):**\n"
+                    f"Модель `{self.current_model}` является платной. Пополните баланс на сайте [ai.itisxiao.cc](https://ai.itisxiao.cc) "
+                    f"или переключитесь на бесплатную модель с плашкой **Free** (например, **DeepSeek V4 Pro**, **Kimi K3**, **ChatGPT 4o mini**).\n"
+                )
+            elif e.code in (401, 403) or "invalid api key" in err_body.lower():
+                msg = (
+                    f"🔑 **Ошибка авторизации XiaoAI ({e.code}):**\n"
+                    f"API-ключ недействителен или отсутствует в хранилище.\n"
+                    f"Сохраните новый ключ командой `/setkey <ваш_ключ>` прямо в этом чате.\n"
+                )
+            else:
+                msg = f"❌ **Ошибка XiaoAI API ({e.code}):** {e.reason}\n`{err_body}`\n"
+
+            await self.send_text_chunk(session_id, msg)
         except Exception as e:
             await self.send_text_chunk(
                 session_id,
