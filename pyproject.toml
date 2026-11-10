@@ -4,13 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zed-xiaoai-agent"
-version = "1.0.0"
+version = "1.0.1"
 description = "Custom External ACP Agent for Zed editor with dynamic XiaoAI router support"
 readme = "README.md"
 requires-python = ">=3.10"
+authors = [
+    { name = "thriveera", url = "https://github.com/thriveera" }
+]
 dependencies = [
     "agent-client-protocol>=1.0.0",
-    "pydantic>=2.7.0"
+    "pydantic>=2.7.0",
+    "keyring>=24.0.0"
 ]
 
 [project.scripts]
