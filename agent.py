@@ -118,22 +118,22 @@ FALLBACK_MODELS = [
     {"id": "xgg/gpt-6-astra", "name": "GPT 6 Astra", "clean_name": "GPT 6 Astra", "price": "$0.20 / 1M токенов", "short_price": "$0.20 / 1M", "context": 400000},
     {"id": "xgg/gpt-6-sol", "name": "GPT 6 Sol", "clean_name": "GPT 6 Sol", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 400000},
     {"id": "xgg/gpt-6-luna", "name": "GPT 6 Luna", "clean_name": "GPT 6 Luna", "price": "$0.0035 / 1M токенов", "short_price": "$0.0035 / 1M", "context": 400000},
-    {"id": "free/gpt-4o-mini", "name": "ChatGPT 4o mini", "clean_name": "ChatGPT 4o mini", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "free/gpt-4o-mini", "name": "ChatGPT 4o mini", "clean_name": "ChatGPT 4o mini", "price": "Free", "short_price": "Free", "context": 1000000},
     {"id": "test/selena-ai", "name": "SelenaAI", "clean_name": "SelenaAI", "price": "$0.01 / 1M токенов", "short_price": "$0.01 / 1M", "context": 1048576},
     {"id": "muse/muse", "name": "Muse Spark 1.3", "clean_name": "Muse Spark 1.3", "price": "$0.01 / 1M токенов", "short_price": "$0.01 / 1M", "context": 256000},
     {"id": "claude/fable", "name": "Claude Fable", "clean_name": "Claude Fable", "price": "$0.25 / 1M токенов", "short_price": "$0.25 / 1M", "context": 200000},
     {"id": "claude/opus", "name": "Claude Opus", "clean_name": "Claude Opus", "price": "$0.10 / 1M токенов", "short_price": "$0.10 / 1M", "context": 200000},
     {"id": "claude/sonnet", "name": "Claude Sonnet", "clean_name": "Claude Sonnet", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 200000},
     {"id": "claude/haiku", "name": "Claude Haiku", "clean_name": "Claude Haiku", "price": "$0.03 / 1M токенов", "short_price": "$0.03 / 1M", "context": 200000},
-    {"id": "free/deepseek-flash", "name": "DeepSeek Flash", "clean_name": "DeepSeek Flash", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/deepseek-v4-pro", "name": "DeepSeek V4 Pro", "clean_name": "DeepSeek V4 Pro", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/kimi-k3", "name": "Kimi K3", "clean_name": "Kimi K3", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/qwen3.8-flash", "name": "Qwen 3.8 Flash", "clean_name": "Qwen 3.8 Flash", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/qwen3.8-max", "name": "Qwen 3.8 Max", "clean_name": "Qwen 3.8 Max", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/glm-5.3", "name": "GLM 5.3", "clean_name": "GLM 5.3", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/glm-5.3-prime", "name": "GLM 5.3 Prime", "clean_name": "GLM 5.3 Prime", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/GLM-5.3-Flash", "name": "GLM 5.3 Flash", "clean_name": "GLM 5.3 Flash", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/muse-spark-open", "name": "Muse Spark Open", "clean_name": "Muse Spark Open", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "free/deepseek-flash", "name": "DeepSeek Flash", "clean_name": "DeepSeek Flash", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/deepseek-v4-pro", "name": "DeepSeek V4 Pro", "clean_name": "DeepSeek V4 Pro", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/kimi-k3", "name": "Kimi K3", "clean_name": "Kimi K3", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/qwen3.8-flash", "name": "Qwen 3.8 Flash", "clean_name": "Qwen 3.8 Flash", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/qwen3.8-max", "name": "Qwen 3.8 Max", "clean_name": "Qwen 3.8 Max", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/glm-5.3", "name": "GLM 5.3", "clean_name": "GLM 5.3", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/glm-5.3-prime", "name": "GLM 5.3 Prime", "clean_name": "GLM 5.3 Prime", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/GLM-5.3-Flash", "name": "GLM 5.3 Flash", "clean_name": "GLM 5.3 Flash", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/muse-spark-open", "name": "Muse Spark Open", "clean_name": "Muse Spark Open", "price": "Free", "short_price": "Free", "context": 1000000},
 ]
 
 
@@ -172,8 +172,8 @@ def fetch_xiaoai_catalog(base_url: str, api_key: str) -> List[Dict[str, Any]]:
                 c_name = clean_model_name(raw_name)
                 mult = float(m.get("multiplier", 0.0))
                 if mult == 0.0:
-                    price_str = "Бесплатно ($0.00 / 1M)"
-                    short_price = "Бесплатно"
+                    price_str = "Free ($0.00 / 1M)"
+                    short_price = "Free"
                 else:
                     price_val = f"${mult:.4f}".rstrip("0").rstrip(".")
                     price_str = f"{price_val} / 1M токенов"
@@ -341,7 +341,7 @@ class XiaoAiAgent(acp.Agent):
             protocol_version=protocol_version,
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.0.3",
+                version="1.1.0",
                 title="XiaoAI Agent"
             )
         )
