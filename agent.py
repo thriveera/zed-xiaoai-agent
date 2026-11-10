@@ -491,13 +491,8 @@ class XiaoAiAgent(acp.Agent):
         history = self.session_history.setdefault(session_id, [])
         history.append({"role": "user", "content": user_text})
 
-        system_prompts = {
-            "code": "You are XiaoAI Agent, an expert AI programming assistant inside the Zed editor. Provide clean, well-tested code and direct solutions.",
-            "ask": "You are XiaoAI Agent inside the Zed editor. Answer questions clearly, accurately, and conceptually.",
-            "plan": "You are XiaoAI Agent inside the Zed editor. Formulate structured, step-by-step plans and actionable tasks."
-        }
-        sys_msg = system_prompts.get(self.current_mode, system_prompts["code"])
-        payload_messages = [{"role": "system", "content": sys_msg}] + history[-12:]
+        # Send raw conversation history directly to the router without injecting artificial system prompts
+        payload_messages = history[-20:]
 
         key = self.get_api_key()
         if not key:
