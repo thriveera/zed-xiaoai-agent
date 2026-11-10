@@ -32,7 +32,7 @@
 ---
 
 ### Вариант 2: Через архив скриптов (Windows / macOS / Linux)
-1. Скачайте архив **`zed-xiaoai-agent-v1.0.2.zip`** со страницы [Releases](https://github.com/thriveera/zed-xiaoai-agent/releases).
+1. Скачайте архив **`zed-xiaoai-agent-v1.0.3.zip`** со страницы [Releases](https://github.com/thriveera/zed-xiaoai-agent/releases).
 2. Распакуйте и запустите:
    - **Windows**: `install.bat`
    - **macOS / Linux**: `./install.sh`
@@ -44,6 +44,15 @@
 
 - Ключ **не записывается в открытом виде** в `settings.json`.
 - Агент извлекает ключ из системного защищённого хранилища через `keyring`.
+
+---
+
+---
+
+## 🗑️ Удаление
+
+- **В графическом установщике**: нажмите кнопку **«🗑️ Удалить из Zed»**.
+- **Через консоль**: выполните команду python install.py --uninstall.
 
 ---
 
