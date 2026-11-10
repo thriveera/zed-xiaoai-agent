@@ -29,13 +29,13 @@ ACCENT_BLUE = "#58a6ff"
 ACCENT_GREEN = "#238636"
 ACCENT_GREEN_HOVER = "#2ea043"
 
-AGENT_CODE = """\"\"\"
+AGENT_CODE = r'''"""
 XiaoAI ACP Agent for Zed Editor
 An Agent Client Protocol (ACP) server connecting Zed to the XiaoAI model router.
 
 Author: thriveera (https://github.com/thriveera)
 License: MIT
-\"\"\"
+"""
 
 import os
 import sys
@@ -62,7 +62,7 @@ from acp.schema import (
 
 
 def load_env_file():
-    \"\"\"Loads environment variables from .env file if present in the agent directory.\"\"\"
+    """Loads environment variables from .env file if present in the agent directory."""
     agent_dir = os.path.dirname(os.path.abspath(__file__))
     env_path = os.path.join(agent_dir, ".env")
     if os.path.exists(env_path):
@@ -106,18 +106,18 @@ def save_agent_config(cfg: Dict[str, Any]):
 
 
 def clean_model_name(name: str) -> str:
-    \"\"\"Removes promotional notes in parentheses to display a clean, elegant name.\"\"\"
+    """Removes promotional notes in parentheses to display a clean, elegant name."""
     name = re.sub(r'\s*\([^)]*(?:cheaper|latest|cheapest|world|new)[^)]*\)', '', name, flags=re.IGNORECASE)
     return name.strip()
 
 
 def get_secure_api_key() -> str:
-    \"\"\"
+    """
     Retrieves the API key securely.
     Priority:
     1. OS Encrypted Keyring (Windows Credential Locker / macOS Keychain / Linux SecretService)
     2. Environment variable XIAOAI_API_KEY
-    \"\"\"
+    """
     try:
         import keyring
         key = keyring.get_password("xiaoai-agent", "api_key")
@@ -134,7 +134,7 @@ def get_secure_api_key() -> str:
 
 
 def set_secure_api_key(key: str) -> bool:
-    \"\"\"Stores the API key into the OS encrypted credential store.\"\"\"
+    """Stores the API key into the OS encrypted credential store."""
     try:
         import keyring
         keyring.set_password("xiaoai-agent", "api_key", key.strip())
@@ -149,27 +149,27 @@ FALLBACK_MODELS = [
     {"id": "xgg/gpt-6-astra", "name": "GPT 6 Astra", "clean_name": "GPT 6 Astra", "price": "$0.20 / 1M токенов", "short_price": "$0.20 / 1M", "context": 400000},
     {"id": "xgg/gpt-6-sol", "name": "GPT 6 Sol", "clean_name": "GPT 6 Sol", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 400000},
     {"id": "xgg/gpt-6-luna", "name": "GPT 6 Luna", "clean_name": "GPT 6 Luna", "price": "$0.0035 / 1M токенов", "short_price": "$0.0035 / 1M", "context": 400000},
-    {"id": "free/gpt-4o-mini", "name": "ChatGPT 4o mini", "clean_name": "ChatGPT 4o mini", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "free/gpt-4o-mini", "name": "ChatGPT 4o mini", "clean_name": "ChatGPT 4o mini", "price": "Free", "short_price": "Free", "context": 1000000},
     {"id": "test/selena-ai", "name": "SelenaAI", "clean_name": "SelenaAI", "price": "$0.01 / 1M токенов", "short_price": "$0.01 / 1M", "context": 1048576},
     {"id": "muse/muse", "name": "Muse Spark 1.3", "clean_name": "Muse Spark 1.3", "price": "$0.01 / 1M токенов", "short_price": "$0.01 / 1M", "context": 256000},
     {"id": "claude/fable", "name": "Claude Fable", "clean_name": "Claude Fable", "price": "$0.25 / 1M токенов", "short_price": "$0.25 / 1M", "context": 200000},
     {"id": "claude/opus", "name": "Claude Opus", "clean_name": "Claude Opus", "price": "$0.10 / 1M токенов", "short_price": "$0.10 / 1M", "context": 200000},
     {"id": "claude/sonnet", "name": "Claude Sonnet", "clean_name": "Claude Sonnet", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 200000},
     {"id": "claude/haiku", "name": "Claude Haiku", "clean_name": "Claude Haiku", "price": "$0.03 / 1M токенов", "short_price": "$0.03 / 1M", "context": 200000},
-    {"id": "free/deepseek-flash", "name": "DeepSeek Flash", "clean_name": "DeepSeek Flash", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/deepseek-v4-pro", "name": "DeepSeek V4 Pro", "clean_name": "DeepSeek V4 Pro", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/kimi-k3", "name": "Kimi K3", "clean_name": "Kimi K3", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/qwen3.8-flash", "name": "Qwen 3.8 Flash", "clean_name": "Qwen 3.8 Flash", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/qwen3.8-max", "name": "Qwen 3.8 Max", "clean_name": "Qwen 3.8 Max", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/glm-5.3", "name": "GLM 5.3", "clean_name": "GLM 5.3", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/glm-5.3-prime", "name": "GLM 5.3 Prime", "clean_name": "GLM 5.3 Prime", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/GLM-5.3-Flash", "name": "GLM 5.3 Flash", "clean_name": "GLM 5.3 Flash", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
-    {"id": "free/muse-spark-open", "name": "Muse Spark Open", "clean_name": "Muse Spark Open", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "free/deepseek-flash", "name": "DeepSeek Flash", "clean_name": "DeepSeek Flash", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/deepseek-v4-pro", "name": "DeepSeek V4 Pro", "clean_name": "DeepSeek V4 Pro", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/kimi-k3", "name": "Kimi K3", "clean_name": "Kimi K3", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/qwen3.8-flash", "name": "Qwen 3.8 Flash", "clean_name": "Qwen 3.8 Flash", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/qwen3.8-max", "name": "Qwen 3.8 Max", "clean_name": "Qwen 3.8 Max", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/glm-5.3", "name": "GLM 5.3", "clean_name": "GLM 5.3", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/glm-5.3-prime", "name": "GLM 5.3 Prime", "clean_name": "GLM 5.3 Prime", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/GLM-5.3-Flash", "name": "GLM 5.3 Flash", "clean_name": "GLM 5.3 Flash", "price": "Free", "short_price": "Free", "context": 1000000},
+    {"id": "free/muse-spark-open", "name": "Muse Spark Open", "clean_name": "Muse Spark Open", "price": "Free", "short_price": "Free", "context": 1000000},
 ]
 
 
 def fetch_xiaoai_catalog(base_url: str, api_key: str) -> List[Dict[str, Any]]:
-    \"\"\"Fetches real-time model catalog, context window, and exact token pricing from XiaoAI router.\"\"\"
+    """Fetches real-time model catalog, context window, and exact token pricing from XiaoAI router."""
     if not api_key:
         return FALLBACK_MODELS
 
@@ -203,8 +203,8 @@ def fetch_xiaoai_catalog(base_url: str, api_key: str) -> List[Dict[str, Any]]:
                 c_name = clean_model_name(raw_name)
                 mult = float(m.get("multiplier", 0.0))
                 if mult == 0.0:
-                    price_str = "Бесплатно ($0.00 / 1M)"
-                    short_price = "Бесплатно"
+                    price_str = "Free ($0.00 / 1M)"
+                    short_price = "Free"
                 else:
                     price_val = f"${mult:.4f}".rstrip("0").rstrip(".")
                     price_str = f"{price_val} / 1M токенов"
@@ -372,7 +372,7 @@ class XiaoAiAgent(acp.Agent):
             protocol_version=protocol_version,
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.0.3",
+                version="1.1.0",
                 title="XiaoAI Agent"
             )
         )
@@ -623,13 +623,12 @@ if __name__ == "__main__":
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
         pass
-"""
-
+'''
 
 class InstallerGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("XiaoAI Agent · Установщик и управление для Zed")
+        self.title("XiaoAI Agent v1.1.0 · Установщик и управление для Zed")
         self.geometry("660x680")
         self.resizable(False, False)
         self.configure(bg=DARK_BG)
@@ -691,7 +690,7 @@ class InstallerGUI(tk.Tk):
         header = ttk.Frame(main)
         header.pack(fill=tk.X, pady=(0, 12))
 
-        title_lbl = tk.Label(header, text="⚡ XiaoAI External Agent", font=("Segoe UI", 18, "bold"), fg=ACCENT_BLUE, bg=DARK_BG)
+        title_lbl = tk.Label(header, text="⚡ XiaoAI External Agent v1.1.0", font=("Segoe UI", 18, "bold"), fg=ACCENT_BLUE, bg=DARK_BG)
         title_lbl.pack(anchor="w")
 
         sub_lbl = tk.Label(header, text="Установка, синхронизация и управление роутером XiaoAI в редакторе Zed", font=("Segoe UI", 10), fg=TEXT_MUTED, bg=DARK_BG)
