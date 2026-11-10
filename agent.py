@@ -341,7 +341,7 @@ class XiaoAiAgent(acp.Agent):
             protocol_version=protocol_version,
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.1.0",
+                version="1.1.1",
                 title="XiaoAI Agent"
             )
         )
