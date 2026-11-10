@@ -549,7 +549,7 @@ class XiaoAiAgent(acp.Agent):
             ),
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.1.7",
+                version="1.1.8",
                 title="XiaoAI Agent"
             )
         )
