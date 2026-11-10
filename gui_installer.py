@@ -372,7 +372,7 @@ class XiaoAiAgent(acp.Agent):
             protocol_version=protocol_version,
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.1.0",
+                version="1.1.1",
                 title="XiaoAI Agent"
             )
         )
@@ -628,7 +628,7 @@ if __name__ == "__main__":
 class InstallerGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("XiaoAI Agent v1.1.0 · Установщик и управление для Zed")
+        self.title("XiaoAI Agent v1.1.1 · Установщик и управление для Zed")
         self.geometry("660x680")
         self.resizable(False, False)
         self.configure(bg=DARK_BG)
@@ -690,7 +690,7 @@ class InstallerGUI(tk.Tk):
         header = ttk.Frame(main)
         header.pack(fill=tk.X, pady=(0, 12))
 
-        title_lbl = tk.Label(header, text="⚡ XiaoAI External Agent v1.1.0", font=("Segoe UI", 18, "bold"), fg=ACCENT_BLUE, bg=DARK_BG)
+        title_lbl = tk.Label(header, text="⚡ XiaoAI External Agent v1.1.1", font=("Segoe UI", 18, "bold"), fg=ACCENT_BLUE, bg=DARK_BG)
         title_lbl.pack(anchor="w")
 
         sub_lbl = tk.Label(header, text="Установка, синхронизация и управление роутером XiaoAI в редакторе Zed", font=("Segoe UI", 10), fg=TEXT_MUTED, bg=DARK_BG)
