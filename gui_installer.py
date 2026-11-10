@@ -843,15 +843,13 @@ class InstallerGUI(tk.Tk):
             with open(settings_path, "w", encoding="utf-8") as sf:
                 json.dump(settings, sf, indent=2, ensure_ascii=False)
 
-            # Ask about deleting stored key
+            # Automatically delete stored key from OS Keyring and clear input
             if keyring:
                 try:
-                    if keyring.get_password("xiaoai-agent", "api_key"):
-                        if messagebox.askyesno("Удаление ключа", "Удалить также сохранённый API-ключ из системного хранилища паролей (Keyring)?"):
-                            keyring.delete_password("xiaoai-agent", "api_key")
-                            self.key_var.set("")
+                    keyring.delete_password("xiaoai-agent", "api_key")
                 except Exception:
                     pass
+            self.key_var.set("")
 
             # Optionally remove files
             target_dir = self.install_dir_var.get().strip()
