@@ -580,7 +580,7 @@ class XiaoAiAgent(acp.Agent):
             ),
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.1.7",
+                version="1.1.8",
                 title="XiaoAI Agent"
             )
         )
@@ -1092,7 +1092,7 @@ if __name__ == "__main__":
 class InstallerGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("XiaoAI Agent v1.1.7 · Установщик и управление для Zed")
+        self.title("XiaoAI Agent v1.1.8 · Установщик и управление для Zed")
         self.geometry("660x680")
         self.resizable(False, False)
         self.configure(bg=DARK_BG)
@@ -1130,6 +1130,8 @@ class InstallerGUI(tk.Tk):
                 pass
 
         self.setup_ui()
+        self.setup_universal_entry(self.entry_key, self.key_var)
+        self.setup_universal_entry(self.entry_path, self.install_dir_var)
         self.refresh_zed_status()
 
     def setup_ui(self):
@@ -1154,7 +1156,7 @@ class InstallerGUI(tk.Tk):
         header = ttk.Frame(main)
         header.pack(fill=tk.X, pady=(0, 12))
 
-        title_lbl = tk.Label(header, text="⚡ XiaoAI External Agent v1.1.7", font=("Segoe UI", 18, "bold"), fg=ACCENT_BLUE, bg=DARK_BG)
+        title_lbl = tk.Label(header, text="⚡ XiaoAI External Agent v1.1.8", font=("Segoe UI", 18, "bold"), fg=ACCENT_BLUE, bg=DARK_BG)
         title_lbl.pack(anchor="w")
 
         sub_lbl = tk.Label(header, text="Установка, синхронизация и управление роутером XiaoAI в редакторе Zed", font=("Segoe UI", 10), fg=TEXT_MUTED, bg=DARK_BG)
@@ -1186,8 +1188,8 @@ class InstallerGUI(tk.Tk):
         path_row = ttk.Frame(card_path, style="Card.TFrame")
         path_row.pack(fill=tk.X)
 
-        entry_path = tk.Entry(path_row, textvariable=self.install_dir_var, font=("Consolas", 9), bg="#12161f", fg=TEXT_MAIN, insertbackground="white", relief="flat")
-        entry_path.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3, padx=(0, 8))
+        self.entry_path = tk.Entry(path_row, textvariable=self.install_dir_var, font=("Consolas", 9), bg="#12161f", fg=TEXT_MAIN, insertbackground="white", relief="flat")
+        self.entry_path.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3, padx=(0, 8))
 
         btn_browse = ttk.Button(path_row, text="Обзор...", style="Small.TButton", command=self.browse_dir)
         btn_browse.pack(side=tk.RIGHT)
@@ -1203,7 +1205,10 @@ class InstallerGUI(tk.Tk):
         key_row.pack(fill=tk.X)
 
         self.entry_key = tk.Entry(key_row, textvariable=self.key_var, show="•", font=("Consolas", 10), bg="#12161f", fg=ACCENT_BLUE, insertbackground="white", relief="flat")
-        self.entry_key.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3, padx=(0, 8))
+        self.entry_key.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3, padx=(0, 6))
+
+        self.btn_paste = ttk.Button(key_row, text="📋 Вставить", style="Small.TButton", command=self.paste_key)
+        self.btn_paste.pack(side=tk.LEFT, padx=(0, 6))
 
         self.btn_eye = ttk.Button(key_row, text="👁️", width=3, style="Small.TButton", command=self.toggle_eye)
         self.btn_eye.pack(side=tk.LEFT, padx=(0, 6))
@@ -1299,6 +1304,81 @@ class InstallerGUI(tk.Tk):
             self.lbl_zed_status.config(text="⚠️ Папка настроек Zed будет создана автоматически при установке", fg="#d29922")
             self.lbl_agent_status.config(text="○ Статус агента: НЕ УСТАНОВЛЕН", fg="#8b949e")
 
+    def paste_key(self):
+        try:
+            clip = self.clipboard_get()
+            if clip:
+                clip = clip.strip().strip("'\"")
+                self.key_var.set(clip)
+                self.status_var.set("✓ Ключ успешно вставлен из буфера обмена!")
+                self.status_lbl.config(fg="#3fb950")
+        except Exception as e:
+            messagebox.showwarning("Буфер обмена", f"Буфер обмена пуст или недоступен:\n{e}")
+
+    def setup_universal_entry(self, entry_widget, var_to_set=None):
+        menu = tk.Menu(entry_widget, tearoff=0, bg="#1c212c", fg="#e6edf3", activebackground="#2b3242", activeforeground="#58a6ff")
+
+        def do_paste():
+            try:
+                clip = self.clipboard_get()
+                if clip:
+                    clip = clip.strip().strip("'\"")
+                    if var_to_set:
+                        var_to_set.set(clip)
+                    else:
+                        entry_widget.delete(0, tk.END)
+                        entry_widget.insert(0, clip)
+                    self.status_var.set("✓ Текст успешно вставлен из буфера обмена")
+                    self.status_lbl.config(fg="#3fb950")
+            except Exception:
+                entry_widget.event_generate("<<Paste>>")
+
+        def do_copy():
+            entry_widget.event_generate("<<Copy>>")
+
+        def do_cut():
+            entry_widget.event_generate("<<Cut>>")
+
+        def do_select_all():
+            entry_widget.select_range(0, tk.END)
+            entry_widget.icursor(tk.END)
+
+        menu.add_command(label="Вставить (Ctrl+V)", command=do_paste)
+        menu.add_command(label="Копировать (Ctrl+C)", command=do_copy)
+        menu.add_command(label="Вырезать (Ctrl+X)", command=do_cut)
+        menu.add_separator()
+        menu.add_command(label="Выделить всё (Ctrl+A)", command=do_select_all)
+
+        def popup(event):
+            try:
+                menu.tk_popup(event.x_root, event.y_root)
+            finally:
+                menu.grab_release()
+
+        entry_widget.bind("<Button-3>", popup)
+
+        # Cross-layout Windows keyboard handler (handles both Russian and English keyboard layouts)
+        def handle_ctrl_keys(event):
+            # keycode 86 = V (including Russian Cyrillic_em)
+            if event.keycode == 86 or event.keysym.lower() in ("v", "cyrillic_em"):
+                do_paste()
+                return "break"
+            # keycode 67 = C (including Russian Cyrillic_es)
+            elif event.keycode == 67 or event.keysym.lower() in ("c", "cyrillic_es"):
+                do_copy()
+                return "break"
+            # keycode 88 = X (including Russian Cyrillic_che)
+            elif event.keycode == 88 or event.keysym.lower() in ("x", "cyrillic_che"):
+                do_cut()
+                return "break"
+            # keycode 65 = A (including Russian Cyrillic_ef)
+            elif event.keycode == 65 or event.keysym.lower() in ("a", "cyrillic_ef"):
+                do_select_all()
+                return "break"
+
+        entry_widget.bind("<Control-KeyPress>", handle_ctrl_keys)
+        entry_widget.bind("<Shift-Insert>", lambda e: (do_paste(), "break")[1])
+
     def toggle_eye(self):
         self.key_visible = not self.key_visible
         self.entry_key.config(show="" if self.key_visible else "•")
@@ -1320,16 +1400,22 @@ class InstallerGUI(tk.Tk):
             try:
                 req = urllib.request.Request(
                     "https://ai.itisxiao.cc/v1/models",
-                    headers={"Authorization": f"Bearer {k}", "User-Agent": "Zed-XiaoAI-Agent/1.0"}
+                    headers={
+                        "Authorization": f"Bearer {k}",
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    }
                 )
-                with urllib.request.urlopen(req, timeout=8) as r:
+                with urllib.request.urlopen(req, timeout=10) as r:
                     data = json.loads(r.read().decode())
                     cnt = len(data.get("data", []))
 
                 # Check balance
                 bal = "Активен"
                 try:
-                    req_b = urllib.request.Request(f"https://ai.itisxiao.cc/key/{k}", headers={"User-Agent": "Mozilla/5.0"})
+                    req_b = urllib.request.Request(
+                        f"https://ai.itisxiao.cc/key/{k}",
+                        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                    )
                     with urllib.request.urlopen(req_b, timeout=8) as rb:
                         import re
                         m = re.search(r"Account balance.*?<span>(.*?)</span>", rb.read().decode(), re.DOTALL)
@@ -1339,6 +1425,17 @@ class InstallerGUI(tk.Tk):
                     pass
 
                 self.after(0, lambda: self.on_test_success(cnt, bal))
+            except urllib.error.HTTPError as e:
+                err_text = f"HTTP {e.code} ({e.reason})"
+                try:
+                    body = e.read().decode("utf-8", errors="replace")
+                    if "Invalid API key" in body or "auth_error" in body:
+                        err_text = "Неверный API-ключ (Invalid API key)"
+                    elif "insufficient" in body.lower() or "balance" in body.lower():
+                        err_text = "Недостаточно средств на балансе"
+                except Exception:
+                    pass
+                self.after(0, lambda: self.on_test_err(err_text))
             except Exception as e:
                 self.after(0, lambda: self.on_test_err(str(e)))
 
@@ -1416,9 +1513,10 @@ class InstallerGUI(tk.Tk):
                 if "agent_servers" not in settings:
                     settings["agent_servers"] = {}
 
+                python_exe = shutil.which("python") or shutil.which("py") or sys.executable
                 settings["agent_servers"]["XiaoAI Agent"] = {
                     "type": "custom",
-                    "command": "python",
+                    "command": python_exe,
                     "args": [agent_path]
                 }
 
