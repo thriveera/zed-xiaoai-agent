@@ -1,2 +1,72 @@
-# zed-xiaoai-agent
-Custom External ACP Agent for Zed editor with dynamic XiaoAI router support
+﻿# ⚡ Zed XiaoAI External Agent
+
+> Кастомный **External Agent (ACP)** для редактора **Zed** с поддержкой роутера моделей **XiaoAI**.
+
+## 🌟 Возможности
+
+- **Полная интеграция с Zed**: работает через стандартный протокол **Agent Client Protocol (ACP)** в боковой панели ассистента Zed (`Ctrl + ?` / `Cmd + ?`).
+- **Выбор моделей прямо в интерфейсе**: модели отображаются в выпадающем списке Zed Agent с описанием контекста.
+- **Динамическая синхронизация**: автоматическое получение актуального каталога моделей при старте и по команде `/sync`.
+- **Потоковый вывод (Streaming)**: мгновенный вывод ответа модели.
+- **Поддержка рассуждений (Thinking / Reasoning)**: раздельный вывод блоков цепочки рассуждений (`AgentThoughtChunk`) и текста ответа.
+- **Встроенные слэш-команды в чате**:
+  - `/sync` — опросить роутер XiaoAI и мгновенно обновить список доступных моделей в выпадающем меню.
+  - `/status` — проверить статус API-ключа и остаток баланса на счёте.
+  - `/models` — вывести подробный список всех доступных моделей с их характеристиками.
+- **Безопасность**: никаких захардкоженных ключей! Ключ передаётся через стандартную переменную окружения `XIAOAI_API_KEY` или локальный `.env`.
+
+---
+
+## 🚀 Быстрый старт
+
+### 1. Установка зависимостей
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Настройка ключа
+
+Задайте ключ в переменной окружения:
+
+```bash
+# Windows (PowerShell)
+$env:XIAOAI_API_KEY = "your_api_key_here"
+
+# Linux / macOS
+export XIAOAI_API_KEY="your_api_key_here"
+```
+
+Или создайте файл `.env` рядом со скриптом `agent.py`:
+```env
+XIAOAI_API_KEY=your_api_key_here
+```
+
+---
+
+## 🛠️ Подключение к Zed
+
+Откройте настройки Zed (`Ctrl + ,` или `Cmd + ,`) и добавьте агента в секцию `agent_servers`:
+
+```json
+{
+  "agent_servers": {
+    "XiaoAI Agent": {
+      "type": "custom",
+      "command": "python",
+      "args": ["C:\\path\\to\\zed-xiaoai-agent\\agent.py"],
+      "env": {
+        "XIAOAI_API_KEY": "YOUR_API_KEY_HERE"
+      }
+    }
+  }
+}
+```
+
+После сохранения откройте панель агента Zed (`Ctrl + ?`), в выпадающем списке агентов выберите **XiaoAI Agent** — и наслаждайтесь всеми моделями XiaoAI!
+
+---
+
+## 📦 Релизы
+
+Готовые сборки и архивы доступны во вкладке [Releases](https://github.com/thriveera/zed-xiaoai-agent/releases).
