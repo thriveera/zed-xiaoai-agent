@@ -432,8 +432,8 @@ if __name__ == "__main__":
 class InstallerGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("XiaoAI Agent · Установщик для Zed")
-        self.geometry("640x580")
+        self.title("XiaoAI Agent · Установщик и управление для Zed")
+        self.geometry("660x620")
         self.resizable(False, False)
         self.configure(bg=DARK_BG)
 
@@ -441,15 +441,24 @@ class InstallerGUI(tk.Tk):
         self.eval("tk::PlaceWindow . center")
 
         self.key_var = tk.StringVar()
-        self.status_var = tk.StringVar(value="Ожидание ввода ключа...")
+        self.status_var = tk.StringVar(value="Готов к работе")
         self.install_dir_var = tk.StringVar(
             value=os.path.join(os.environ.get("USERPROFILE", os.path.expanduser("~")), ".zed", "agents", "xiaoai-agent")
         )
         self.key_visible = False
 
-        self.key_var.set("")
+        # Auto-load existing key from local Windows Credential Vault (Keyring)
+        if keyring:
+            try:
+                existing = keyring.get_password("xiaoai-agent", "api_key")
+                if existing:
+                    self.key_var.set(existing)
+                    self.status_var.set("Обнаружен ранее сохранённый ключ из локального хранилища Windows")
+            except Exception:
+                pass
 
         self.setup_ui()
+        self.refresh_zed_status()
 
     def setup_ui(self):
         style = ttk.Style(self)
@@ -459,6 +468,10 @@ class InstallerGUI(tk.Tk):
         style.configure("Card.TFrame", background=CARD_BG, relief="flat")
         style.configure("Primary.TButton", font=("Segoe UI", 11, "bold"), background=ACCENT_GREEN, foreground="#ffffff", borderwidth=0, padding=10)
         style.map("Primary.TButton", background=[("active", ACCENT_GREEN_HOVER), ("disabled", "#194a24")])
+        
+        style.configure("Danger.TButton", font=("Segoe UI", 10, "bold"), background="#b62324", foreground="#ffffff", borderwidth=0, padding=10)
+        style.map("Danger.TButton", background=[("active", "#d9383a"), ("disabled", "#491717")])
+
         style.configure("Small.TButton", font=("Segoe UI", 9), background="#2b3242", foreground=TEXT_MAIN, borderwidth=0, padding=5)
         style.map("Small.TButton", background=[("active", "#3b4458")])
 
@@ -467,12 +480,12 @@ class InstallerGUI(tk.Tk):
 
         # Header Banner
         header = ttk.Frame(main)
-        header.pack(fill=tk.X, pady=(0, 16))
+        header.pack(fill=tk.X, pady=(0, 14))
 
         title_lbl = tk.Label(header, text="⚡ XiaoAI External Agent", font=("Segoe UI", 18, "bold"), fg=ACCENT_BLUE, bg=DARK_BG)
         title_lbl.pack(anchor="w")
 
-        sub_lbl = tk.Label(header, text="Автоматическая установка и интеграция роутера XiaoAI в редактор Zed", font=("Segoe UI", 10), fg=TEXT_MUTED, bg=DARK_BG)
+        sub_lbl = tk.Label(header, text="Установка, настройка и удаление роутера XiaoAI для редактора Zed", font=("Segoe UI", 10), fg=TEXT_MUTED, bg=DARK_BG)
         sub_lbl.pack(anchor="w", pady=(2, 0))
 
         author_lbl = tk.Label(header, text="Автор проекта: thriveera", font=("Segoe UI", 9, "italic"), fg="#6e7681", bg=DARK_BG)
@@ -480,23 +493,20 @@ class InstallerGUI(tk.Tk):
 
         # Step 1: Zed Status Card
         card_zed = ttk.Frame(main, style="Card.TFrame", padding=12)
-        card_zed.pack(fill=tk.X, pady=(0, 12))
-
-        appdata = os.environ.get("APPDATA", "")
-        zed_settings = os.path.join(appdata, "Zed", "settings.json") if appdata else ""
-        has_zed = os.path.exists(zed_settings)
+        card_zed.pack(fill=tk.X, pady=(0, 10))
 
         lbl_zed_title = tk.Label(card_zed, text="1. Статус редактора Zed:", font=("Segoe UI", 10, "bold"), fg="#79c0ff", bg=CARD_BG)
         lbl_zed_title.pack(anchor="w")
 
-        zed_status_text = f"✓ Обнаружен: {zed_settings}" if has_zed else "⚠️ Папка настроек Zed будет создана автоматически"
-        zed_status_fg = "#3fb950" if has_zed else "#d29922"
-        lbl_zed_status = tk.Label(card_zed, text=zed_status_text, font=("Segoe UI", 9), fg=zed_status_fg, bg=CARD_BG)
-        lbl_zed_status.pack(anchor="w", pady=(2, 0))
+        self.lbl_zed_status = tk.Label(card_zed, text="Поиск Zed...", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=CARD_BG)
+        self.lbl_zed_status.pack(anchor="w", pady=(2, 0))
+
+        self.lbl_agent_status = tk.Label(card_zed, text="", font=("Segoe UI", 9, "bold"), fg=TEXT_MUTED, bg=CARD_BG)
+        self.lbl_agent_status.pack(anchor="w", pady=(2, 0))
 
         # Step 2: Install Path Card
         card_path = ttk.Frame(main, style="Card.TFrame", padding=12)
-        card_path.pack(fill=tk.X, pady=(0, 12))
+        card_path.pack(fill=tk.X, pady=(0, 10))
 
         lbl_path_title = tk.Label(card_path, text="2. Папка установки агента:", font=("Segoe UI", 10, "bold"), fg="#79c0ff", bg=CARD_BG)
         lbl_path_title.pack(anchor="w", pady=(0, 4))
@@ -512,9 +522,9 @@ class InstallerGUI(tk.Tk):
 
         # Step 3: API Key Card
         card_key = ttk.Frame(main, style="Card.TFrame", padding=12)
-        card_key.pack(fill=tk.X, pady=(0, 16))
+        card_key.pack(fill=tk.X, pady=(0, 14))
 
-        lbl_key_title = tk.Label(card_key, text="3. API-ключ XiaoAI (будет зашифрован в Keyring):", font=("Segoe UI", 10, "bold"), fg="#79c0ff", bg=CARD_BG)
+        lbl_key_title = tk.Label(card_key, text="3. API-ключ XiaoAI (шифруется в Windows Credential Vault):", font=("Segoe UI", 10, "bold"), fg="#79c0ff", bg=CARD_BG)
         lbl_key_title.pack(anchor="w", pady=(0, 4))
 
         key_row = ttk.Frame(card_key, style="Card.TFrame")
@@ -529,16 +539,48 @@ class InstallerGUI(tk.Tk):
         btn_test = ttk.Button(key_row, text="🔍 Проверить", style="Small.TButton", command=self.test_key)
         btn_test.pack(side=tk.RIGHT)
 
-        self.lbl_key_hint = tk.Label(card_key, text="🔒 Ключ шифруется Windows Credential Vault (DPAPI) и защищён от утечек.", font=("Segoe UI", 8), fg="#6e7681", bg=CARD_BG)
+        self.lbl_key_hint = tk.Label(card_key, text="🔒 Ключ надёжно сохраняется в локальном хранилище паролей Windows (DPAPI).", font=("Segoe UI", 8), fg="#6e7681", bg=CARD_BG)
         self.lbl_key_hint.pack(anchor="w", pady=(4, 0))
 
-        # Install Action Button
-        self.btn_install = ttk.Button(main, text="🚀 Установить XiaoAI Agent в Zed", style="Primary.TButton", command=self.install_clicked)
-        self.btn_install.pack(fill=tk.X, pady=(0, 8))
+        # Action Buttons Frame
+        btn_box = ttk.Frame(main)
+        btn_box.pack(fill=tk.X, pady=(0, 8))
+
+        self.btn_install = ttk.Button(btn_box, text="🚀 Установить / Обновить в Zed", style="Primary.TButton", command=self.install_clicked)
+        self.btn_install.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
+
+        self.btn_uninstall = ttk.Button(btn_box, text="🗑️ Удалить из Zed", style="Danger.TButton", command=self.uninstall_clicked)
+        self.btn_uninstall.pack(side=tk.RIGHT)
 
         # Status Bar
         self.status_lbl = tk.Label(main, textvariable=self.status_var, font=("Segoe UI", 9), fg=TEXT_MUTED, bg=DARK_BG)
         self.status_lbl.pack(anchor="w")
+
+    def get_zed_settings_path(self):
+        appdata = os.environ.get("APPDATA", "")
+        if appdata:
+            return os.path.join(appdata, "Zed", "settings.json")
+        return ""
+
+    def refresh_zed_status(self):
+        settings_path = self.get_zed_settings_path()
+        has_zed = os.path.exists(settings_path) if settings_path else False
+
+        if has_zed:
+            self.lbl_zed_status.config(text=f"✓ Настройки Zed: {settings_path}", fg="#3fb950")
+            try:
+                with open(settings_path, "r", encoding="utf-8") as sf:
+                    data = json.load(sf)
+                if "agent_servers" in data and "XiaoAI Agent" in data["agent_servers"]:
+                    self.lbl_agent_status.config(text="● Статус агента: УСТАНОВЛЕН И АКТИВЕН В ZED", fg="#3fb950")
+                    self.btn_uninstall.config(state="normal")
+                else:
+                    self.lbl_agent_status.config(text="○ Статус агента: НЕ УСТАНОВЛЕН В ZED", fg="#d29922")
+            except Exception:
+                self.lbl_agent_status.config(text="⚠️ Ошибка чтения settings.json", fg="#f85149")
+        else:
+            self.lbl_zed_status.config(text="⚠️ Папка настроек Zed будет создана автоматически при установке", fg="#d29922")
+            self.lbl_agent_status.config(text="○ Статус агента: НЕ УСТАНОВЛЕН", fg="#8b949e")
 
     def toggle_eye(self):
         self.key_visible = not self.key_visible
@@ -572,7 +614,6 @@ class InstallerGUI(tk.Tk):
                 try:
                     req_b = urllib.request.Request(f"https://ai.itisxiao.cc/key/{k}", headers={"User-Agent": "Mozilla/5.0"})
                     with urllib.request.urlopen(req_b, timeout=8) as rb:
-                        import re
                         m = re.search(r"Account balance.*?<span>(.*?)</span>", rb.read().decode(), re.DOTALL)
                         if m:
                             bal = f"Баланс: {m.group(1).strip()}"
@@ -631,8 +672,10 @@ class InstallerGUI(tk.Tk):
                         print("Keyring save error:", e)
 
                 # 3. Update Zed settings.json
-                appdata = os.environ.get("APPDATA", "")
-                settings_path = os.path.join(appdata, "Zed", "settings.json")
+                settings_path = self.get_zed_settings_path()
+                if not settings_path:
+                    raise RuntimeError("Не удалось определить путь к настройкам Zed")
+
                 os.makedirs(os.path.dirname(settings_path), exist_ok=True)
 
                 settings = {}
@@ -648,7 +691,6 @@ class InstallerGUI(tk.Tk):
                 if "agent_servers" not in settings:
                     settings["agent_servers"] = {}
 
-                # Configure without plaintext key!
                 settings["agent_servers"]["XiaoAI Agent"] = {
                     "type": "custom",
                     "command": "python",
@@ -665,28 +707,71 @@ class InstallerGUI(tk.Tk):
         threading.Thread(target=worker, daemon=True).start()
 
     def on_install_success(self):
+        self.btn_install.config(state="normal")
+        self.refresh_zed_status()
         self.status_var.set("🎉 Установка успешно завершена!")
         self.status_lbl.config(fg="#3fb950")
-        self.btn_install.config(text="✓ Успешно установлено в Zed", state="disabled")
 
-        btn_open_zed = ttk.Button(self, text="🚀 Запустить Zed Editor", style="Primary.TButton", command=self.open_zed)
-        btn_open_zed.pack(fill=tk.X, padx=20, pady=(0, 10))
-
-        messagebox.showinfo(
+        ans = messagebox.askyesno(
             "Готово!",
             "XiaoAI Agent успешно установлен и подключен к Zed!\n\n"
             "Инструкция:\n"
             "1. Откройте Zed.\n"
             "2. Нажмите Ctrl + ? (панель агента).\n"
-            "3. В селекторе агентов выберите 'XiaoAI Agent'.\n"
-            "4. Выбирайте любую модель из выпадающего списка!"
+            "3. В селекторе выберите 'XiaoAI Agent'.\n"
+            "4. Выбирайте любую модель XiaoAI!\n\n"
+            "Хотите запустить Zed прямо сейчас?"
         )
+        if ans:
+            self.open_zed()
 
     def on_install_fail(self, err_text):
         self.btn_install.config(state="normal")
         self.status_var.set(f"❌ Ошибка установки: {err_text}")
         self.status_lbl.config(fg="#f85149")
         messagebox.showerror("Ошибка установки", f"Произошла ошибка при установке:\n{err_text}")
+
+    def uninstall_clicked(self):
+        settings_path = self.get_zed_settings_path()
+        if not settings_path or not os.path.exists(settings_path):
+            messagebox.showinfo("Инфо", "Файл настроек Zed не найден.")
+            return
+
+        if not messagebox.askyesno("Удаление агента", "Вы уверены, что хотите удалить XiaoAI Agent из редактора Zed?"):
+            return
+
+        try:
+            with open(settings_path, "r", encoding="utf-8") as sf:
+                settings = json.load(sf)
+
+            if "agent_servers" in settings and "XiaoAI Agent" in settings["agent_servers"]:
+                del settings["agent_servers"]["XiaoAI Agent"]
+
+            with open(settings_path, "w", encoding="utf-8") as sf:
+                json.dump(settings, sf, indent=2, ensure_ascii=False)
+
+            # Ask about deleting stored key
+            if keyring:
+                try:
+                    if keyring.get_password("xiaoai-agent", "api_key"):
+                        if messagebox.askyesno("Удаление ключа", "Удалить также сохранённый API-ключ из системного хранилища паролей (Keyring)?"):
+                            keyring.delete_password("xiaoai-agent", "api_key")
+                            self.key_var.set("")
+                except Exception:
+                    pass
+
+            # Optionally remove files
+            target_dir = self.install_dir_var.get().strip()
+            if target_dir and os.path.exists(target_dir):
+                if messagebox.askyesno("Файлы агента", f"Удалить также папку с файлами агента?\n{target_dir}"):
+                    shutil.rmtree(target_dir, ignore_errors=True)
+
+            self.refresh_zed_status()
+            self.status_var.set("XiaoAI Agent успешно удалён из Zed.")
+            self.status_lbl.config(fg="#d29922")
+            messagebox.showinfo("Успешно", "XiaoAI Agent был полностью отключен и удалён из Zed!")
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось выполнить удаление:\n{str(e)}")
 
     def open_zed(self):
         try:
