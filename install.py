@@ -67,11 +67,8 @@ def uninstall():
 
     try:
         import keyring
-        if keyring.get_password("xiaoai-agent", "api_key"):
-            ans = input("Удалить сохранённый API-ключ из системного хранилища (Keyring)? [y/N]: ").strip().lower()
-            if ans in ("y", "yes", "д", "да"):
-                keyring.delete_password("xiaoai-agent", "api_key")
-                ok("API-ключ удалён из Keyring.")
+        keyring.delete_password("xiaoai-agent", "api_key")
+        ok("API-ключ успешно удалён из системного хранилища (Keyring).")
     except Exception:
         pass
 
