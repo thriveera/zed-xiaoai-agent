@@ -13,11 +13,13 @@ import time
 import re
 import asyncio
 import urllib.request
+import platform
 from typing import Any, Dict, List, Optional
 
 import acp
 from acp.schema import (
     InitializeRequest, InitializeResponse, Implementation,
+    AgentCapabilities, PromptCapabilities, McpCapabilities,
     NewSessionRequest, NewSessionResponse,
     PromptRequest, PromptResponse,
     SetSessionConfigOptionSelectRequest, SetSessionConfigOptionBooleanRequest,
@@ -224,6 +226,7 @@ class XiaoAiAgent(acp.Agent):
         self.current_model = "xgg/gpt-6.1-sol"
         self.current_mode = "code"
         self.session_history: Dict[str, List[Dict[str, str]]] = {}
+        self.session_cwds: Dict[str, str] = {}
 
     def on_connect(self, conn: acp.Client) -> None:
         self.conn = conn
@@ -329,6 +332,52 @@ class XiaoAiAgent(acp.Agent):
             )
         ]
 
+    def get_user_instructions(self, session_id: str) -> Optional[str]:
+        """Loads user-defined custom instructions / system prompt from Zed settings or workspace rules."""
+        # 1. Check workspace .zed/instructions.md or instructions.md
+        cwd = self.session_cwds.get(session_id)
+        if cwd and os.path.exists(cwd):
+            for rel in [".zed/instructions.md", "instructions.md", ".zed/rules", ".rules"]:
+                candidate = os.path.join(cwd, rel)
+                if os.path.isfile(candidate):
+                    try:
+                        with open(candidate, "r", encoding="utf-8") as f:
+                            content = f.read().strip()
+                            if content:
+                                return content
+                    except Exception:
+                        pass
+
+        # 2. Check Zed global settings.json
+        settings_path = None
+        system = platform.system()
+        home = os.path.expanduser("~")
+        if system == "Windows":
+            appdata = os.environ.get("APPDATA")
+            if appdata:
+                settings_path = os.path.join(appdata, "Zed", "settings.json")
+        elif system == "Darwin":
+            p1 = os.path.join(home, "Library", "Application Support", "Zed", "settings.json")
+            settings_path = p1 if os.path.exists(p1) else os.path.join(home, ".config", "zed", "settings.json")
+        else:
+            settings_path = os.path.join(home, ".config", "zed", "settings.json")
+
+        if settings_path and os.path.exists(settings_path):
+            try:
+                with open(settings_path, "r", encoding="utf-8") as f:
+                    s = json.load(f)
+                    for key in ["custom_instructions", "system_prompt"]:
+                        if key in s and isinstance(s[key], str) and s[key].strip():
+                            return s[key].strip()
+                    for parent in ["assistant", "agent"]:
+                        if parent in s and isinstance(s[parent], dict):
+                            for key in ["custom_instructions", "system_prompt", "instructions"]:
+                                if key in s[parent] and isinstance(s[parent][key], str) and s[parent][key].strip():
+                                    return s[parent][key].strip()
+            except Exception:
+                pass
+        return None
+
     async def initialize(
         self,
         protocol_version: int,
@@ -339,9 +388,20 @@ class XiaoAiAgent(acp.Agent):
         self.refresh_models()
         return InitializeResponse(
             protocol_version=protocol_version,
+            agent_capabilities=AgentCapabilities(
+                prompt_capabilities=PromptCapabilities(
+                    embedded_context=True,
+                    image=True
+                ),
+                mcp_capabilities=McpCapabilities(
+                    http=True,
+                    sse=True,
+                    acp=True
+                )
+            ),
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.1.1",
+                version="1.1.2",
                 title="XiaoAI Agent"
             )
         )
@@ -356,6 +416,7 @@ class XiaoAiAgent(acp.Agent):
         import uuid
         session_id = str(uuid.uuid4())
         self.session_history[session_id] = []
+        self.session_cwds[session_id] = cwd
         self.refresh_models()
 
         modes = SessionModeState(
@@ -405,14 +466,29 @@ class XiaoAiAgent(acp.Agent):
         )
 
     async def prompt(self, session_id: str, prompt: List[Any], **kwargs: Any) -> PromptResponse:
-        user_text = ""
+        text_parts = []
         for block in prompt:
-            if hasattr(block, "text"):
-                user_text += block.text
-            elif isinstance(block, dict) and "text" in block:
-                user_text += block["text"]
+            if hasattr(block, "text") and block.text:
+                text_parts.append(block.text)
+            elif hasattr(block, "resource"):
+                res = block.resource
+                if hasattr(res, "text") and res.text:
+                    tag = getattr(res, "uri", "Resource")
+                    uri_tag = f"[{tag}]\n" if tag else ""
+                    text_parts.append(f"{uri_tag}{res.text}")
+            elif isinstance(block, dict):
+                if "text" in block and block["text"]:
+                    text_parts.append(block["text"])
+                elif "resource" in block and isinstance(block["resource"], dict):
+                    res = block["resource"]
+                    if "text" in res and res["text"]:
+                        tag = res.get("uri", "Resource")
+                        uri_tag = f"[{tag}]\n" if "uri" in res else ""
+                        text_parts.append(f"{uri_tag}{res['text']}")
+                elif "content" in block and isinstance(block["content"], str):
+                    text_parts.append(block["content"])
 
-        user_text = user_text.strip()
+        user_text = "\n\n".join(text_parts).strip()
 
         # Slash command: /setkey <key>
         if user_text.startswith("/setkey"):
@@ -491,8 +567,12 @@ class XiaoAiAgent(acp.Agent):
         history = self.session_history.setdefault(session_id, [])
         history.append({"role": "user", "content": user_text})
 
-        # Send raw conversation history directly to the router without injecting artificial system prompts
-        payload_messages = history[-20:]
+        # Forward user custom instructions if configured by the user in Zed, otherwise pure router mode
+        payload_messages = []
+        user_instructions = self.get_user_instructions(session_id)
+        if user_instructions:
+            payload_messages.append({"role": "system", "content": user_instructions})
+        payload_messages.extend(history[-20:])
 
         key = self.get_api_key()
         if not key:
