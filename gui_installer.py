@@ -1,6 +1,6 @@
-﻿"""
-XiaoAI Agent for Zed - Graphical Installer
-A standalone Windows GUI installer for setting up the XiaoAI ACP Agent in Zed.
+"""
+XiaoAI Agent for Zed - Graphical Installer & Manager
+A standalone Windows GUI installer for setting up, configuring, and managing the XiaoAI ACP Agent in Zed.
 
 Author: thriveera (https://github.com/thriveera)
 """
@@ -40,6 +40,8 @@ License: MIT
 import os
 import sys
 import json
+import time
+import re
 import asyncio
 import urllib.request
 from typing import Any, Dict, List, Optional
@@ -80,6 +82,33 @@ def load_env_file():
 load_env_file()
 
 DEFAULT_BASE_URL = os.environ.get("XIAOAI_BASE_URL", "https://ai.itisxiao.cc/v1")
+AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(AGENT_DIR, "config.json")
+CACHE_FILE = os.path.join(AGENT_DIR, "models_cache.json")
+
+
+def load_agent_config() -> Dict[str, Any]:
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"sync_interval": "startup", "last_sync": 0}
+
+
+def save_agent_config(cfg: Dict[str, Any]):
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+
+
+def clean_model_name(name: str) -> str:
+    \"\"\"Removes promotional notes in parentheses to display a clean, elegant name.\"\"\"
+    name = re.sub(r'\s*\([^)]*(?:cheaper|latest|cheapest|world|new)[^)]*\)', '', name, flags=re.IGNORECASE)
+    return name.strip()
 
 
 def get_secure_api_key() -> str:
@@ -116,31 +145,31 @@ def set_secure_api_key(key: str) -> bool:
 
 
 FALLBACK_MODELS = [
-    {"id": "xgg/gpt-6.1-sol", "name": "GPT 6.1 Sol", "price": "$0.08 / 1M токенов", "short_price": "$0.08/1M", "context": 400000},
-    {"id": "xgg/gpt-6-astra", "name": "GPT 6 Astra", "price": "$0.20 / 1M токенов", "short_price": "$0.20/1M", "context": 400000},
-    {"id": "xgg/gpt-6-sol", "name": "GPT 6 Sol", "price": "$0.08 / 1M токенов", "short_price": "$0.08/1M", "context": 400000},
-    {"id": "xgg/gpt-6-luna", "name": "GPT 6 Luna", "price": "$0.0035 / 1M токенов", "short_price": "$0.0035/1M", "context": 400000},
-    {"id": "free/gpt-4o-mini", "name": "ChatGPT 4o mini [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
-    {"id": "test/selena-ai", "name": "SelenaAI [Experimental]", "price": "$0.01 / 1M токенов", "short_price": "$0.01/1M", "context": 1048576},
-    {"id": "muse/muse", "name": "Muse Spark 1.3", "price": "$0.01 / 1M токенов", "short_price": "$0.01/1M", "context": 256000},
-    {"id": "claude/fable", "name": "Claude Fable", "price": "$0.25 / 1M токенов", "short_price": "$0.25/1M", "context": 200000},
-    {"id": "claude/opus", "name": "Claude Opus", "price": "$0.10 / 1M токенов", "short_price": "$0.10/1M", "context": 200000},
-    {"id": "claude/sonnet", "name": "Claude Sonnet", "price": "$0.08 / 1M токенов", "short_price": "$0.08/1M", "context": 200000},
-    {"id": "claude/haiku", "name": "Claude Haiku", "price": "$0.03 / 1M токенов", "short_price": "$0.03/1M", "context": 200000},
-    {"id": "free/deepseek-flash", "name": "DeepSeek Flash [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
-    {"id": "free/deepseek-v4-pro", "name": "DeepSeek V4 Pro [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
-    {"id": "free/kimi-k3", "name": "Kimi K3 [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
-    {"id": "free/qwen3.8-flash", "name": "Qwen 3.8 Flash [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
-    {"id": "free/qwen3.8-max", "name": "Qwen 3.8 Max [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
-    {"id": "free/glm-5.3", "name": "GLM 5.3 [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
-    {"id": "free/glm-5.3-prime", "name": "GLM 5.3 Prime [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
-    {"id": "free/GLM-5.3-Flash", "name": "GLM 5.3 Flash [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
-    {"id": "free/muse-spark-open", "name": "Muse Spark Open [Free]", "price": "Бесплатно", "short_price": "Free", "context": 1000000},
+    {"id": "xgg/gpt-6.1-sol", "name": "GPT 6.1 Sol", "clean_name": "GPT 6.1 Sol", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 400000},
+    {"id": "xgg/gpt-6-astra", "name": "GPT 6 Astra", "clean_name": "GPT 6 Astra", "price": "$0.20 / 1M токенов", "short_price": "$0.20 / 1M", "context": 400000},
+    {"id": "xgg/gpt-6-sol", "name": "GPT 6 Sol", "clean_name": "GPT 6 Sol", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 400000},
+    {"id": "xgg/gpt-6-luna", "name": "GPT 6 Luna", "clean_name": "GPT 6 Luna", "price": "$0.0035 / 1M токенов", "short_price": "$0.0035 / 1M", "context": 400000},
+    {"id": "free/gpt-4o-mini", "name": "ChatGPT 4o mini", "clean_name": "ChatGPT 4o mini", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "test/selena-ai", "name": "SelenaAI", "clean_name": "SelenaAI", "price": "$0.01 / 1M токенов", "short_price": "$0.01 / 1M", "context": 1048576},
+    {"id": "muse/muse", "name": "Muse Spark 1.3", "clean_name": "Muse Spark 1.3", "price": "$0.01 / 1M токенов", "short_price": "$0.01 / 1M", "context": 256000},
+    {"id": "claude/fable", "name": "Claude Fable", "clean_name": "Claude Fable", "price": "$0.25 / 1M токенов", "short_price": "$0.25 / 1M", "context": 200000},
+    {"id": "claude/opus", "name": "Claude Opus", "clean_name": "Claude Opus", "price": "$0.10 / 1M токенов", "short_price": "$0.10 / 1M", "context": 200000},
+    {"id": "claude/sonnet", "name": "Claude Sonnet", "clean_name": "Claude Sonnet", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 200000},
+    {"id": "claude/haiku", "name": "Claude Haiku", "clean_name": "Claude Haiku", "price": "$0.03 / 1M токенов", "short_price": "$0.03 / 1M", "context": 200000},
+    {"id": "free/deepseek-flash", "name": "DeepSeek Flash", "clean_name": "DeepSeek Flash", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "free/deepseek-v4-pro", "name": "DeepSeek V4 Pro", "clean_name": "DeepSeek V4 Pro", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "free/kimi-k3", "name": "Kimi K3", "clean_name": "Kimi K3", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "free/qwen3.8-flash", "name": "Qwen 3.8 Flash", "clean_name": "Qwen 3.8 Flash", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "free/qwen3.8-max", "name": "Qwen 3.8 Max", "clean_name": "Qwen 3.8 Max", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "free/glm-5.3", "name": "GLM 5.3", "clean_name": "GLM 5.3", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "free/glm-5.3-prime", "name": "GLM 5.3 Prime", "clean_name": "GLM 5.3 Prime", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "free/GLM-5.3-Flash", "name": "GLM 5.3 Flash", "clean_name": "GLM 5.3 Flash", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
+    {"id": "free/muse-spark-open", "name": "Muse Spark Open", "clean_name": "Muse Spark Open", "price": "Бесплатно", "short_price": "Бесплатно", "context": 1000000},
 ]
 
 
 def fetch_xiaoai_catalog(base_url: str, api_key: str) -> List[Dict[str, Any]]:
-    \"\"\"Fetches real-time model catalog and exact token pricing from XiaoAI router.\"\"\"
+    \"\"\"Fetches real-time model catalog, context window, and exact token pricing from XiaoAI router.\"\"\"
     if not api_key:
         return FALLBACK_MODELS
 
@@ -171,48 +200,46 @@ def fetch_xiaoai_catalog(base_url: str, api_key: str) -> List[Dict[str, Any]]:
             for m in models:
                 mid = m["id"]
                 raw_name = m.get("name") or mid
+                c_name = clean_model_name(raw_name)
                 mult = float(m.get("multiplier", 0.0))
                 if mult == 0.0:
                     price_str = "Бесплатно ($0.00 / 1M)"
-                    short_price = "Free"
+                    short_price = "Бесплатно"
                 else:
                     price_val = f"${mult:.4f}".rstrip("0").rstrip(".")
                     price_str = f"{price_val} / 1M токенов"
-                    short_price = f"{price_val}/1M"
+                    short_price = f"{price_val} / 1M"
 
                 ctx = contexts.get(mid, 200000)
                 results.append({
                     "id": mid,
                     "name": raw_name,
+                    "clean_name": c_name,
                     "price": price_str,
                     "short_price": short_price,
                     "multiplier": mult,
                     "context": ctx
                 })
             if results:
+                # Save to cache file
+                try:
+                    with open(CACHE_FILE, "w", encoding="utf-8") as cf:
+                        json.dump(results, cf, indent=2, ensure_ascii=False)
+                except Exception:
+                    pass
                 return results
     except Exception:
         pass
 
-    # 3. Fallback to /v1/models if /api/key/models is unavailable
-    try:
-        req_v1 = urllib.request.Request(f"{base_url}/models", headers=headers)
-        with urllib.request.urlopen(req_v1, timeout=8) as r:
-            data = json.loads(r.read().decode())["data"]
-            results = []
-            for m in data:
-                mid = m["id"]
-                results.append({
-                    "id": mid,
-                    "name": m.get("name") or mid,
-                    "price": "По тарифу XiaoAI",
-                    "short_price": "XiaoAI",
-                    "context": m.get("context_input", 200000)
-                })
-            if results:
-                return results
-    except Exception:
-        pass
+    # 3. Try to read from local cache file if available
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r", encoding="utf-8") as cf:
+                cached = json.load(cf)
+                if cached:
+                    return cached
+        except Exception:
+            pass
 
     return FALLBACK_MODELS
 
@@ -222,6 +249,8 @@ class XiaoAiAgent(acp.Agent):
         super().__init__()
         self.conn: Optional[acp.Client] = None
         self.base_url = DEFAULT_BASE_URL
+        self.config = load_agent_config()
+        self.sync_interval = self.config.get("sync_interval", "startup")
         self.models_catalog: List[Dict[str, Any]] = []
         self.current_model = "xgg/gpt-6.1-sol"
         self.current_mode = "code"
@@ -233,23 +262,55 @@ class XiaoAiAgent(acp.Agent):
     def get_api_key(self) -> str:
         return get_secure_api_key()
 
-    def refresh_models(self):
+    def should_sync(self, force: bool = False) -> bool:
+        if force:
+            return True
+        if self.sync_interval == "startup":
+            return True
+        if self.sync_interval == "manual":
+            return len(self.models_catalog) == 0
+        now = time.time()
+        last_sync = self.config.get("last_sync", 0)
+        if self.sync_interval == "6h":
+            return (now - last_sync) > 6 * 3600 or len(self.models_catalog) == 0
+        if self.sync_interval == "24h":
+            return (now - last_sync) > 24 * 3600 or len(self.models_catalog) == 0
+        return True
+
+    def refresh_models(self, force: bool = False):
         key = self.get_api_key()
-        self.models_catalog = fetch_xiaoai_catalog(self.base_url, key)
+        if self.should_sync(force):
+            self.models_catalog = fetch_xiaoai_catalog(self.base_url, key)
+            self.config["last_sync"] = int(time.time())
+            save_agent_config(self.config)
+        elif not self.models_catalog:
+            # Load from cache or fallback
+            if os.path.exists(CACHE_FILE):
+                try:
+                    with open(CACHE_FILE, "r", encoding="utf-8") as cf:
+                        self.models_catalog = json.load(cf)
+                except Exception:
+                    self.models_catalog = FALLBACK_MODELS
+            else:
+                self.models_catalog = FALLBACK_MODELS
+
         if not any(m["id"] == self.current_model for m in self.models_catalog) and self.models_catalog:
             self.current_model = self.models_catalog[0]["id"]
 
     def build_config_options(self) -> List[SessionConfigOptionSelect]:
-        options = []
+        model_options = []
         for m in self.models_catalog:
             price_tag = m.get("short_price") or m.get("price", "")
-            clean_name = m["name"]
-            display_title = f"{clean_name} · [{price_tag}]"
+            c_name = m.get("clean_name") or clean_model_name(m.get("name", m["id"]))
+            
+            # The title displayed on the model selection button in Zed:
+            display_title = f"{c_name} — {price_tag}"
+            
             ctx = m.get("context", 200000)
             ctx_str = f"{ctx // 1000}k" if isinstance(ctx, int) and ctx >= 1000 else str(ctx)
             desc = f"Прайс: {m.get('price', 'N/A')} | Контекст: {ctx_str} токенов"
 
-            options.append(
+            model_options.append(
                 SessionConfigSelectOption(
                     value=m["id"],
                     name=display_title,
@@ -257,14 +318,45 @@ class XiaoAiAgent(acp.Agent):
                 )
             )
 
+        sync_options = [
+            SessionConfigSelectOption(
+                value="startup",
+                name="🔄 При каждом запуске агента (Авто)",
+                description="Автоматически синхронизировать модели, контекст и прайсы при каждом запуске агента"
+            ),
+            SessionConfigSelectOption(
+                value="6h",
+                name="⏱️ Каждые 6 часов",
+                description="Автоматически обновлять каталог и прайсы каждые 6 часов"
+            ),
+            SessionConfigSelectOption(
+                value="24h",
+                name="📅 Каждые 24 часа",
+                description="Автоматически обновлять каталог и прайсы один раз в сутки"
+            ),
+            SessionConfigSelectOption(
+                value="manual",
+                name="✋ Вручную (/sync в чате)",
+                description="Обновлять каталог только при вызове команды /sync"
+            )
+        ]
+
         return [
             SessionConfigOptionSelect(
                 id="model",
-                name="Model",
-                description="Выбранная модель XiaoAI (с ценой за 1M токенов)",
+                name="Модель XiaoAI",
+                description="Выбор модели с актуальной ценой за 1M токенов",
                 category="model",
                 current_value=self.current_model,
-                options=options
+                options=model_options
+            ),
+            SessionConfigOptionSelect(
+                id="sync_interval",
+                name="Синхронизация каталога и прайсов",
+                description="Частота автообновления каталога моделей, контекста и цен",
+                category="sync",
+                current_value=self.sync_interval,
+                options=sync_options
             )
         ]
 
@@ -321,6 +413,10 @@ class XiaoAiAgent(acp.Agent):
     ) -> SetSessionConfigOptionResponse:
         if config_id == "model":
             self.current_model = str(value)
+        elif config_id == "sync_interval":
+            self.sync_interval = str(value)
+            self.config["sync_interval"] = self.sync_interval
+            save_agent_config(self.config)
         return SetSessionConfigOptionResponse(config_options=self.build_config_options())
 
     async def send_text_chunk(self, session_id: str, text: str):
@@ -356,7 +452,7 @@ class XiaoAiAgent(acp.Agent):
                 new_key = parts[1].strip()
                 if set_secure_api_key(new_key):
                     await self.send_text_chunk(session_id, "🔒 API-ключ успешно сохранён в зашифрованное хранилище системы (Keyring)!\n")
-                    self.refresh_models()
+                    self.refresh_models(force=True)
                     if self.conn:
                         await self.conn.session_update(
                             session_id=session_id,
@@ -370,8 +466,8 @@ class XiaoAiAgent(acp.Agent):
 
         # Slash command: /sync
         if user_text.startswith("/sync"):
-            await self.send_text_chunk(session_id, "🔄 Опрашиваю роутер XiaoAI и обновляю каталог и прайс-лист...\n")
-            self.refresh_models()
+            await self.send_text_chunk(session_id, "🔄 Опрашиваю роутер XiaoAI и обновляю каталог, контекст и прайсы моделей...\n")
+            self.refresh_models(force=True)
             cnt = len(self.models_catalog)
             await self.send_text_chunk(session_id, f"✅ Каталог успешно обновлен! Всего моделей доступно: {cnt}.\n")
             if self.conn:
@@ -392,12 +488,18 @@ class XiaoAiAgent(acp.Agent):
                 req = urllib.request.Request(f"{root_url}/key/{key}", headers={"User-Agent": "Mozilla/5.0"})
                 with urllib.request.urlopen(req, timeout=10) as r:
                     html = r.read().decode()
-                    import re
                     bal = "Активен"
                     m = re.search(r"Account balance.*?<span>(.*?)</span>", html, re.DOTALL)
                     if m:
                         bal = f"Баланс: {m.group(1).strip()}"
-                    await self.send_text_chunk(session_id, f"🟢 **Статус XiaoAI:** Ключ активен. {bal}\nТекущая модель: `{self.current_model}`\nХранилище: Зашифрованное (Keyring/OS Vault)\n")
+                    sync_labels = {
+                        "startup": "При каждом запуске (Авто)",
+                        "6h": "Каждые 6 часов",
+                        "24h": "Каждые 24 часа",
+                        "manual": "Только вручную (/sync)"
+                    }
+                    sync_txt = sync_labels.get(self.sync_interval, self.sync_interval)
+                    await self.send_text_chunk(session_id, f"🟢 **Статус XiaoAI:** Ключ активен. {bal}\nТекущая модель: `{self.current_model}`\nРежим синхронизации: `{sync_txt}`\nХранилище ключа: Зашифрованное (Keyring/OS Vault)\n")
             except Exception as e:
                 await self.send_text_chunk(session_id, f"❌ Ошибка проверки ключа: {e}\n")
             return PromptResponse(stop_reason="end_turn")
@@ -412,7 +514,8 @@ class XiaoAiAgent(acp.Agent):
                 ctx = m.get("context", 200000)
                 ctx_str = f"{ctx // 1000}k" if isinstance(ctx, int) and ctx >= 1000 else str(ctx)
                 price = m.get("price", "N/A")
-                await self.send_text_chunk(session_id, f"| **{m['name']}** | `{price}` | {ctx_str} | `{m['id']}` |\n")
+                c_name = m.get("clean_name") or clean_model_name(m.get("name", m["id"]))
+                await self.send_text_chunk(session_id, f"| **{c_name}** | `{price}` | {ctx_str} | `{m['id']}` |\n")
             return PromptResponse(stop_reason="end_turn")
 
         # Regular Chat Turn
@@ -522,11 +625,12 @@ if __name__ == "__main__":
         pass
 """
 
+
 class InstallerGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("XiaoAI Agent · Установщик и управление для Zed")
-        self.geometry("660x620")
+        self.geometry("660x680")
         self.resizable(False, False)
         self.configure(bg=DARK_BG)
 
@@ -534,6 +638,7 @@ class InstallerGUI(tk.Tk):
         self.eval("tk::PlaceWindow . center")
 
         self.key_var = tk.StringVar()
+        self.sync_var = tk.StringVar(value="startup")
         self.status_var = tk.StringVar(value="Готов к работе")
         self.install_dir_var = tk.StringVar(
             value=os.path.join(os.environ.get("USERPROFILE", os.path.expanduser("~")), ".zed", "agents", "xiaoai-agent")
@@ -547,6 +652,17 @@ class InstallerGUI(tk.Tk):
                 if existing:
                     self.key_var.set(existing)
                     self.status_var.set("Обнаружен ранее сохранённый ключ из локального хранилища Windows")
+            except Exception:
+                pass
+
+        # Try to load existing sync preference if agent is installed
+        existing_cfg = os.path.join(self.install_dir_var.get(), "config.json")
+        if os.path.exists(existing_cfg):
+            try:
+                with open(existing_cfg, "r", encoding="utf-8") as cf:
+                    cdata = json.load(cf)
+                    if "sync_interval" in cdata:
+                        self.sync_var.set(cdata["sync_interval"])
             except Exception:
                 pass
 
@@ -573,58 +689,58 @@ class InstallerGUI(tk.Tk):
 
         # Header Banner
         header = ttk.Frame(main)
-        header.pack(fill=tk.X, pady=(0, 14))
+        header.pack(fill=tk.X, pady=(0, 12))
 
         title_lbl = tk.Label(header, text="⚡ XiaoAI External Agent", font=("Segoe UI", 18, "bold"), fg=ACCENT_BLUE, bg=DARK_BG)
         title_lbl.pack(anchor="w")
 
-        sub_lbl = tk.Label(header, text="Установка, настройка и удаление роутера XiaoAI для редактора Zed", font=("Segoe UI", 10), fg=TEXT_MUTED, bg=DARK_BG)
+        sub_lbl = tk.Label(header, text="Установка, синхронизация и управление роутером XiaoAI в редакторе Zed", font=("Segoe UI", 10), fg=TEXT_MUTED, bg=DARK_BG)
         sub_lbl.pack(anchor="w", pady=(2, 0))
 
         author_lbl = tk.Label(header, text="Автор проекта: thriveera", font=("Segoe UI", 9, "italic"), fg="#6e7681", bg=DARK_BG)
         author_lbl.pack(anchor="w")
 
         # Step 1: Zed Status Card
-        card_zed = ttk.Frame(main, style="Card.TFrame", padding=12)
-        card_zed.pack(fill=tk.X, pady=(0, 10))
+        card_zed = ttk.Frame(main, style="Card.TFrame", padding=10)
+        card_zed.pack(fill=tk.X, pady=(0, 8))
 
-        lbl_zed_title = tk.Label(card_zed, text="1. Статус редактора Zed:", font=("Segoe UI", 10, "bold"), fg="#79c0ff", bg=CARD_BG)
+        lbl_zed_title = tk.Label(card_zed, text="1. Статус редактора Zed:", font=("Segoe UI", 9, "bold"), fg="#79c0ff", bg=CARD_BG)
         lbl_zed_title.pack(anchor="w")
 
         self.lbl_zed_status = tk.Label(card_zed, text="Поиск Zed...", font=("Segoe UI", 9), fg=TEXT_MUTED, bg=CARD_BG)
-        self.lbl_zed_status.pack(anchor="w", pady=(2, 0))
+        self.lbl_zed_status.pack(anchor="w", pady=(1, 0))
 
         self.lbl_agent_status = tk.Label(card_zed, text="", font=("Segoe UI", 9, "bold"), fg=TEXT_MUTED, bg=CARD_BG)
-        self.lbl_agent_status.pack(anchor="w", pady=(2, 0))
+        self.lbl_agent_status.pack(anchor="w", pady=(1, 0))
 
         # Step 2: Install Path Card
-        card_path = ttk.Frame(main, style="Card.TFrame", padding=12)
-        card_path.pack(fill=tk.X, pady=(0, 10))
+        card_path = ttk.Frame(main, style="Card.TFrame", padding=10)
+        card_path.pack(fill=tk.X, pady=(0, 8))
 
-        lbl_path_title = tk.Label(card_path, text="2. Папка установки агента:", font=("Segoe UI", 10, "bold"), fg="#79c0ff", bg=CARD_BG)
-        lbl_path_title.pack(anchor="w", pady=(0, 4))
+        lbl_path_title = tk.Label(card_path, text="2. Папка установки агента:", font=("Segoe UI", 9, "bold"), fg="#79c0ff", bg=CARD_BG)
+        lbl_path_title.pack(anchor="w", pady=(0, 3))
 
         path_row = ttk.Frame(card_path, style="Card.TFrame")
         path_row.pack(fill=tk.X)
 
         entry_path = tk.Entry(path_row, textvariable=self.install_dir_var, font=("Consolas", 9), bg="#12161f", fg=TEXT_MAIN, insertbackground="white", relief="flat")
-        entry_path.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4, padx=(0, 8))
+        entry_path.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3, padx=(0, 8))
 
         btn_browse = ttk.Button(path_row, text="Обзор...", style="Small.TButton", command=self.browse_dir)
         btn_browse.pack(side=tk.RIGHT)
 
         # Step 3: API Key Card
-        card_key = ttk.Frame(main, style="Card.TFrame", padding=12)
-        card_key.pack(fill=tk.X, pady=(0, 14))
+        card_key = ttk.Frame(main, style="Card.TFrame", padding=10)
+        card_key.pack(fill=tk.X, pady=(0, 8))
 
-        lbl_key_title = tk.Label(card_key, text="3. API-ключ XiaoAI (шифруется в Windows Credential Vault):", font=("Segoe UI", 10, "bold"), fg="#79c0ff", bg=CARD_BG)
-        lbl_key_title.pack(anchor="w", pady=(0, 4))
+        lbl_key_title = tk.Label(card_key, text="3. API-ключ XiaoAI (шифруется в Windows Credential Vault):", font=("Segoe UI", 9, "bold"), fg="#79c0ff", bg=CARD_BG)
+        lbl_key_title.pack(anchor="w", pady=(0, 3))
 
         key_row = ttk.Frame(card_key, style="Card.TFrame")
         key_row.pack(fill=tk.X)
 
         self.entry_key = tk.Entry(key_row, textvariable=self.key_var, show="•", font=("Consolas", 10), bg="#12161f", fg=ACCENT_BLUE, insertbackground="white", relief="flat")
-        self.entry_key.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4, padx=(0, 8))
+        self.entry_key.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=3, padx=(0, 8))
 
         self.btn_eye = ttk.Button(key_row, text="👁️", width=3, style="Small.TButton", command=self.toggle_eye)
         self.btn_eye.pack(side=tk.LEFT, padx=(0, 6))
@@ -633,7 +749,52 @@ class InstallerGUI(tk.Tk):
         btn_test.pack(side=tk.RIGHT)
 
         self.lbl_key_hint = tk.Label(card_key, text="🔒 Ключ надёжно сохраняется в локальном хранилище паролей Windows (DPAPI).", font=("Segoe UI", 8), fg="#6e7681", bg=CARD_BG)
-        self.lbl_key_hint.pack(anchor="w", pady=(4, 0))
+        self.lbl_key_hint.pack(anchor="w", pady=(3, 0))
+
+        # Step 4: Sync Mode Card
+        card_sync = ttk.Frame(main, style="Card.TFrame", padding=10)
+        card_sync.pack(fill=tk.X, pady=(0, 12))
+
+        lbl_sync_title = tk.Label(card_sync, text="4. Синхронизация моделей, контекста и прайсов:", font=("Segoe UI", 9, "bold"), fg="#79c0ff", bg=CARD_BG)
+        lbl_sync_title.pack(anchor="w", pady=(0, 3))
+
+        sync_row = ttk.Frame(card_sync, style="Card.TFrame")
+        sync_row.pack(fill=tk.X)
+
+        sync_options = [
+            ("🔄 При каждом запуске агента (Автоматически, рекомендуется)", "startup"),
+            ("⏱️ Каждые 6 часов", "6h"),
+            ("📅 Каждые 24 часа", "24h"),
+            ("✋ Только вручную (команда /sync в чате)", "manual")
+        ]
+
+        self.sync_combo = ttk.Combobox(
+            sync_row,
+            values=[opt[0] for opt in sync_options],
+            state="readonly",
+            font=("Segoe UI", 9)
+        )
+        self.sync_combo.pack(fill=tk.X, ipady=3)
+        self.sync_map_to_val = {opt[0]: opt[1] for opt in sync_options}
+        self.sync_map_to_title = {opt[1]: opt[0] for opt in sync_options}
+        
+        curr_val = self.sync_var.get()
+        self.sync_combo.set(self.sync_map_to_title.get(curr_val, sync_options[0][0]))
+
+        def on_sync_changed(event):
+            chosen_title = self.sync_combo.get()
+            self.sync_var.set(self.sync_map_to_val.get(chosen_title, "startup"))
+
+        self.sync_combo.bind("<<ComboboxSelected>>", on_sync_changed)
+
+        lbl_sync_hint = tk.Label(
+            card_sync,
+            text="🏷️ Цены за 1M токенов отображаются прямо в меню выбора моделей чата Zed.",
+            font=("Segoe UI", 8),
+            fg="#6e7681",
+            bg=CARD_BG
+        )
+        lbl_sync_hint.pack(anchor="w", pady=(3, 0))
 
         # Action Buttons Frame
         btn_box = ttk.Frame(main)
@@ -707,6 +868,7 @@ class InstallerGUI(tk.Tk):
                 try:
                     req_b = urllib.request.Request(f"https://ai.itisxiao.cc/key/{k}", headers={"User-Agent": "Mozilla/5.0"})
                     with urllib.request.urlopen(req_b, timeout=8) as rb:
+                        import re
                         m = re.search(r"Account balance.*?<span>(.*?)</span>", rb.read().decode(), re.DOTALL)
                         if m:
                             bal = f"Баланс: {m.group(1).strip()}"
@@ -741,6 +903,8 @@ class InstallerGUI(tk.Tk):
             messagebox.showwarning("Ошибка", "Укажите папку установки")
             return
 
+        chosen_sync = self.sync_var.get()
+
         self.btn_install.config(state="disabled")
         self.status_var.set("Установка агента и настройка Zed...")
 
@@ -756,6 +920,11 @@ class InstallerGUI(tk.Tk):
                 req_path = os.path.join(target_dir, "requirements.txt")
                 with open(req_path, "w", encoding="utf-8") as f:
                     f.write("agent-client-protocol>=1.0.0\npydantic>=2.7.0\nkeyring>=24.0.0\n")
+
+                # Write config.json
+                cfg_path = os.path.join(target_dir, "config.json")
+                with open(cfg_path, "w", encoding="utf-8") as f:
+                    json.dump({"sync_interval": chosen_sync, "last_sync": 0}, f, indent=2, ensure_ascii=False)
 
                 # 2. Store key in Keyring securely
                 if k and keyring:
@@ -812,7 +981,7 @@ class InstallerGUI(tk.Tk):
             "1. Откройте Zed.\n"
             "2. Нажмите Ctrl + ? (панель агента).\n"
             "3. В селекторе выберите 'XiaoAI Agent'.\n"
-            "4. Выбирайте любую модель XiaoAI!\n\n"
+            "4. Выбирайте любую модель (цены за 1M токенов указаны прямо на кнопке выбора)!\n\n"
             "Хотите запустить Zed прямо сейчас?"
         )
         if ans:
@@ -851,16 +1020,16 @@ class InstallerGUI(tk.Tk):
                     pass
             self.key_var.set("")
 
-            # Optionally remove files
+            # Clean target_dir files
             target_dir = self.install_dir_var.get().strip()
             if target_dir and os.path.exists(target_dir):
                 if messagebox.askyesno("Файлы агента", f"Удалить также папку с файлами агента?\n{target_dir}"):
                     shutil.rmtree(target_dir, ignore_errors=True)
 
             self.refresh_zed_status()
-            self.status_var.set("XiaoAI Agent успешно удалён из Zed.")
+            self.status_var.set("XiaoAI Agent и ключ успешно удалены из системы.")
             self.status_lbl.config(fg="#d29922")
-            messagebox.showinfo("Успешно", "XiaoAI Agent был полностью отключен и удалён из Zed!")
+            messagebox.showinfo("Успешно", "XiaoAI Agent был полностью отключен от Zed, а API-ключ стёрт из хранилища Windows!")
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось выполнить удаление:\n{str(e)}")
 
