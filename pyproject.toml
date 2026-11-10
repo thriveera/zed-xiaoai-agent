@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zed-xiaoai-agent"
+version = "1.0.0"
+description = "Custom External ACP Agent for Zed editor with dynamic XiaoAI router support"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "agent-client-protocol>=1.0.0",
+    "pydantic>=2.7.0"
+]
+
+[project.scripts]
+zed-xiaoai-agent = "agent:main"
