@@ -1,5 +1,5 @@
-﻿"""
-Zed XiaoAI Agent - Automated One-Step Installer
+"""
+Zed XiaoAI Agent - Automated One-Step Installer & Manager
 Configures dependencies, encrypted credential storage, and registers the agent in Zed.
 
 Author: thriveera (https://github.com/thriveera)
@@ -42,7 +42,46 @@ def get_zed_settings_path():
         return os.path.join(home, ".config", "zed", "settings.json")
     return None
 
+def uninstall():
+    print("=" * 65)
+    print("⚡ Zed XiaoAI External Agent - Удаление агента из Zed")
+    print("=" * 65)
+    settings_path = get_zed_settings_path()
+    if not settings_path or not os.path.exists(settings_path):
+        err(f"Файл настроек Zed не найден: {settings_path}")
+        return
+
+    try:
+        with open(settings_path, "r", encoding="utf-8") as f:
+            settings = json.load(f)
+
+        if "agent_servers" in settings and "XiaoAI Agent" in settings["agent_servers"]:
+            del settings["agent_servers"]["XiaoAI Agent"]
+            with open(settings_path, "w", encoding="utf-8") as f:
+                json.dump(settings, f, indent=2, ensure_ascii=False)
+            ok("XiaoAI Agent успешно удалён из Zed settings.json!")
+        else:
+            log("XiaoAI Agent не был зарегистрирован в settings.json.")
+    except Exception as e:
+        err(f"Ошибка при обновлении settings.json: {e}")
+
+    try:
+        import keyring
+        if keyring.get_password("xiaoai-agent", "api_key"):
+            ans = input("Удалить сохранённый API-ключ из системного хранилища (Keyring)? [y/N]: ").strip().lower()
+            if ans in ("y", "yes", "д", "да"):
+                keyring.delete_password("xiaoai-agent", "api_key")
+                ok("API-ключ удалён из Keyring.")
+    except Exception:
+        pass
+
+    print("\n🎉 Деинсталляция завершена.")
+
 def main():
+    if "--uninstall" in sys.argv or "-u" in sys.argv:
+        uninstall()
+        return
+
     print("=" * 65)
     print("⚡ Zed XiaoAI External Agent - Автоматическая установка")
     print("=" * 65)
@@ -70,7 +109,18 @@ def main():
 
     # 3. Secure API Key Configuration
     print("\n--- [ Настройка безопасного ключа XiaoAI ] ---")
-    api_key = input("Введите ваш API-ключ XiaoAI: ").strip()
+    current_key = keyring.get_password("xiaoai-agent", "api_key") or os.environ.get("XIAOAI_API_KEY", "")
+    
+    if current_key:
+        masked = current_key[:7] + "..." + current_key[-4:] if len(current_key) > 12 else "***"
+        log(f"Обнаружен ранее сохранённый ключ в локальном Keyring: {masked}")
+        ans = input("Использовать этот ключ? [Y/n]: ").strip().lower()
+        if ans in ("", "y", "yes", "д", "да"):
+            api_key = current_key
+        else:
+            api_key = input("Введите ваш API-ключ XiaoAI: ").strip()
+    else:
+        api_key = input("Введите ваш API-ключ XiaoAI: ").strip()
 
     if not api_key:
         warn("Ключ не был введён. Агент запустится, но для работы потребуется настроить ключ.")
@@ -144,10 +194,7 @@ def main():
     print("2. Откройте панель ассистента: сочетание клавиш [ Ctrl + ? ] (или Cmd + ?).")
     print("3. В выпадающем списке выбора агента переключитесь на 'XiaoAI Agent'.")
     print("4. Выбирайте любую модель из роутера XiaoAI и пишите запрос!")
-    print("\nПолезные команды в чате:")
-    print("  /sync   — моментально обновить список моделей с роутера")
-    print("  /status — проверить статус и баланс ключа")
-    print("  /models — показать список всех доступных моделей")
+    print("\nДля удаления агента запустите: python install.py --uninstall")
     print("=" * 65)
 
 if __name__ == "__main__":
