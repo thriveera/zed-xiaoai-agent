@@ -355,14 +355,27 @@ class XiaoAiAgent(acp.Agent):
             )
         ]
 
-        # Determine model output capacity
+        # Determine model output capacity and min/max bounds
         cur_output = 32000
         for m in self.models_catalog:
             if m["id"] == self.current_model:
                 cur_output = m.get("output", 32000)
                 break
 
+        min_allowed = 1024
+        max_allowed = cur_output
+
+        # Clamp custom budget if set
+        if self.custom_thinking_budget:
+            if self.custom_thinking_budget > max_allowed:
+                self.custom_thinking_budget = max_allowed
+            elif self.custom_thinking_budget < min_allowed:
+                self.custom_thinking_budget = min_allowed
+
+        custom_val = self.custom_thinking_budget or min(12000, max_allowed)
         max_label = f"Max ({cur_output // 1000}k)" if cur_output >= 1000 else f"Max ({cur_output})"
+        custom_label = f"Custom ({custom_val})"
+        custom_desc = f"Пользовательский бюджет токенов: {custom_val} [мин: {min_allowed}, макс: {max_allowed}]"
 
         thinking_options = [
             SessionConfigSelectOption(
@@ -399,15 +412,13 @@ class XiaoAiAgent(acp.Agent):
                 value="max",
                 name=max_label,
                 description=f"Максимально допустимый лимит генерации модели (~{cur_output} токенов)"
+            ),
+            SessionConfigSelectOption(
+                value="custom",
+                name=custom_label,
+                description=custom_desc
             )
         ]
-
-        if self.custom_thinking_budget:
-            thinking_options.insert(1, SessionConfigSelectOption(
-                value=f"custom_{self.custom_thinking_budget}",
-                name=f"Custom ({self.custom_thinking_budget})",
-                description=f"Пользовательский бюджет: {self.custom_thinking_budget} токенов"
-            ))
 
         mode_options = [
             SessionConfigSelectOption(
@@ -441,7 +452,7 @@ class XiaoAiAgent(acp.Agent):
                 name="Thinking Level",
                 description="Уровень рассуждений нейросети (Thinking / Reasoning Effort)",
                 category="thought_level",
-                current_value=self.thinking_level,
+                current_value="custom" if (self.thinking_level == "custom" or str(self.thinking_level).startswith("custom")) else (self.thinking_level if any(o.value == self.thinking_level for o in thinking_options) else "medium"),
                 options=thinking_options
             ),
             SessionConfigOptionSelect(
@@ -531,7 +542,7 @@ class XiaoAiAgent(acp.Agent):
             ),
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.1.5",
+                version="1.1.6",
                 title="XiaoAI Agent"
             )
         )
@@ -575,14 +586,27 @@ class XiaoAiAgent(acp.Agent):
             self.current_model = str(value)
         elif config_id == "thinking_level":
             val_str = str(value)
-            self.thinking_level = val_str
-            if val_str.startswith("custom_"):
-                try:
-                    self.custom_thinking_budget = int(val_str.split("_")[1])
-                except Exception:
-                    pass
+            cur_output = 32000
+            for m in self.models_catalog:
+                if m["id"] == self.current_model:
+                    cur_output = m.get("output", 32000)
+                    break
+            min_allowed = 1024
+            max_allowed = cur_output
+
+            if val_str == "custom" or val_str.startswith("custom"):
+                self.thinking_level = "custom"
+                if val_str.startswith("custom_"):
+                    try:
+                        self.custom_thinking_budget = int(val_str.split("_")[1])
+                    except Exception:
+                        pass
+                if not self.custom_thinking_budget:
+                    self.custom_thinking_budget = min(12000, max_allowed)
+                self.custom_thinking_budget = max(min_allowed, min(self.custom_thinking_budget, max_allowed))
             else:
-                self.custom_thinking_budget = None
+                self.thinking_level = val_str
+
             self.config["thinking_level"] = self.thinking_level
             self.config["custom_thinking_budget"] = self.custom_thinking_budget
             save_agent_config(self.config)
@@ -669,35 +693,76 @@ class XiaoAiAgent(acp.Agent):
                 )
             return PromptResponse(stop_reason="end_turn")
 
-        # Slash command: /thinking or /reasoning <val>
-        if user_text.startswith("/thinking") or user_text.startswith("/reasoning"):
+        # Slash command / prompt configuration for thinking / reasoning / custom
+        user_lower = user_text.strip().lower()
+        custom_arg = None
+
+        if user_lower.startswith(("/thinking", "/reasoning", "/custom")):
             parts = user_text.split(maxsplit=1)
-            if len(parts) > 1 and parts[1].strip():
-                arg = parts[1].strip().lower()
-                if arg.isdigit():
-                    num = int(arg)
-                    self.custom_thinking_budget = num
-                    self.thinking_level = f"custom_{num}"
-                    await self.send_text_chunk(session_id, f"💡 Установлен точный бюджет размышлений: **{num} токенов**.\n")
-                elif arg in ["off", "minimal", "low", "medium", "high", "ultra", "max"]:
-                    self.thinking_level = arg
-                    self.custom_thinking_budget = None
-                    await self.send_text_chunk(session_id, f"💡 Уровень рассуждений переключен на: **{arg.capitalize()}**.\n")
+            custom_arg = parts[1].strip().lower() if len(parts) > 1 else ""
+        elif user_lower.isdigit() and (self.thinking_level == "custom" or str(self.thinking_level).startswith("custom")):
+            custom_arg = user_lower
+        elif user_lower.startswith("custom ") and user_lower[7:].strip().isdigit():
+            custom_arg = user_lower[7:].strip()
+
+        if custom_arg is not None:
+            cur_output = 32000
+            for m in self.models_catalog:
+                if m["id"] == self.current_model:
+                    cur_output = m.get("output", 32000)
+                    break
+            min_allowed = 1024
+            max_allowed = cur_output
+
+            if custom_arg.isdigit():
+                num = int(custom_arg)
+                if num > max_allowed:
+                    final_num = max_allowed
+                    clamped_msg = f"⚠️ Введённое количество ({num}) превышает допустимый максимум модели ({max_allowed}). Установлен максимум: **{final_num} токенов**.\n"
+                elif num < min_allowed:
+                    final_num = min_allowed
+                    clamped_msg = f"⚠️ Введённое количество ({num}) меньше допустимого минимума ({min_allowed}). Установлен минимум: **{final_num} токенов**.\n"
                 else:
-                    await self.send_text_chunk(session_id, "Использование: `/thinking <off|minimal|low|medium|high|ultra|max|число_токенов>`\n")
-                
-                self.config["thinking_level"] = self.thinking_level
-                self.config["custom_thinking_budget"] = self.custom_thinking_budget
+                    final_num = num
+                    clamped_msg = f"✅ Установлен пользовательский бюджет рассуждений: **{final_num} токенов**.\n"
+
+                self.custom_thinking_budget = final_num
+                self.thinking_level = "custom"
+                self.config["thinking_level"] = "custom"
+                self.config["custom_thinking_budget"] = final_num
                 save_agent_config(self.config)
+                await self.send_text_chunk(session_id, clamped_msg)
                 if self.conn:
                     await self.conn.session_update(
                         session_id=session_id,
                         update=ConfigOptionUpdate(config_options=self.build_config_options())
                     )
+                return PromptResponse(stop_reason="end_turn")
+            elif custom_arg in ["off", "minimal", "low", "medium", "high", "ultra", "max"]:
+                self.thinking_level = custom_arg
+                self.config["thinking_level"] = self.thinking_level
+                save_agent_config(self.config)
+                await self.send_text_chunk(session_id, f"💡 Уровень рассуждений переключен на: **{custom_arg.capitalize()}**.\n")
+                if self.conn:
+                    await self.conn.session_update(
+                        session_id=session_id,
+                        update=ConfigOptionUpdate(config_options=self.build_config_options())
+                    )
+                return PromptResponse(stop_reason="end_turn")
+            elif custom_arg in ["custom", ""]:
+                curr = f"{self.custom_thinking_budget or min(12000, max_allowed)} токенов"
+                await self.send_text_chunk(
+                    session_id,
+                    f"💡 Режим **Custom**: текущий бюджет **{curr}** [допустимый диапазон для {self.current_model}: от {min_allowed} до {max_allowed} токенов].\n"
+                    f"Чтобы задать точное число, отправьте `/thinking <число>` или `/custom <число>` (например: `/thinking 25000`). Если число превышает максимум или меньше минимума, оно автоматически выравнивается по допустимой границе.\n"
+                )
+                return PromptResponse(stop_reason="end_turn")
             else:
-                curr = f"{self.custom_thinking_budget} токенов" if self.custom_thinking_budget else self.thinking_level
-                await self.send_text_chunk(session_id, f"💡 Текущий режим рассуждений: **{curr}**\nДля изменения используйте селектор внизу или команду `/thinking <число>`.\n")
-            return PromptResponse(stop_reason="end_turn")
+                await self.send_text_chunk(
+                    session_id,
+                    f"Использование: `/thinking <число>` (допустимо для модели {self.current_model}: от {min_allowed} до {max_allowed} токенов)\n"
+                )
+                return PromptResponse(stop_reason="end_turn")
 
         # Slash command: /status
         if user_text.startswith("/status"):
@@ -787,9 +852,22 @@ class XiaoAiAgent(acp.Agent):
             }
 
             if self.thinking_level != "off":
-                if self.custom_thinking_budget:
-                    b_val = self.custom_thinking_budget
+                cur_output = 32000
+                for m in self.models_catalog:
+                    if m["id"] == self.current_model:
+                        cur_output = m.get("output", 32000)
+                        break
+                min_allowed = 1024
+                max_allowed = cur_output
+
+                if self.thinking_level == "custom" or self.custom_thinking_budget:
+                    raw_b = self.custom_thinking_budget or min(12000, max_allowed)
+                    b_val = max(min_allowed, min(raw_b, max_allowed))
+                    self.custom_thinking_budget = b_val
                     eff = "high" if b_val >= 16000 else ("medium" if b_val >= 5000 else "low")
+                elif self.thinking_level == "max":
+                    b_val = max_allowed
+                    eff = "high"
                 else:
                     b_val = budget_map.get(self.thinking_level, 8192)
                     eff = effort_map.get(self.thinking_level, "medium")
@@ -797,6 +875,7 @@ class XiaoAiAgent(acp.Agent):
                 payload_dict["reasoning_effort"] = eff
                 if "claude" in self.current_model.lower():
                     payload_dict["thinking"] = {"type": "enabled", "budget_tokens": b_val}
+                    payload_dict["max_tokens"] = max(b_val + 4096, max_allowed)
 
             req_data = json.dumps(payload_dict).encode("utf-8")
 
@@ -932,7 +1011,7 @@ if __name__ == "__main__":
 class InstallerGUI(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("XiaoAI Agent v1.1.5 · Установщик и управление для Zed")
+        self.title("XiaoAI Agent v1.1.6 · Установщик и управление для Zed")
         self.geometry("660x680")
         self.resizable(False, False)
         self.configure(bg=DARK_BG)
@@ -994,7 +1073,7 @@ class InstallerGUI(tk.Tk):
         header = ttk.Frame(main)
         header.pack(fill=tk.X, pady=(0, 12))
 
-        title_lbl = tk.Label(header, text="⚡ XiaoAI External Agent v1.1.5", font=("Segoe UI", 18, "bold"), fg=ACCENT_BLUE, bg=DARK_BG)
+        title_lbl = tk.Label(header, text="⚡ XiaoAI External Agent v1.1.6", font=("Segoe UI", 18, "bold"), fg=ACCENT_BLUE, bg=DARK_BG)
         title_lbl.pack(anchor="w")
 
         sub_lbl = tk.Label(header, text="Установка, синхронизация и управление роутером XiaoAI в редакторе Zed", font=("Segoe UI", 10), fg=TEXT_MUTED, bg=DARK_BG)
