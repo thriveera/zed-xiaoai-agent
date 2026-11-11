@@ -133,13 +133,13 @@ FALLBACK_MODELS = [
     {"id": "claude/opus", "name": "Claude Opus", "clean_name": "Claude Opus", "price": "$0.10 / 1M токенов", "short_price": "$0.10 / 1M", "context": 200000, "output": 8192, "reasoning": False},
     {"id": "claude/sonnet", "name": "Claude Sonnet", "clean_name": "Claude Sonnet", "price": "$0.08 / 1M токенов", "short_price": "$0.08 / 1M", "context": 200000, "output": 8192, "reasoning": False},
     {"id": "claude/haiku", "name": "Claude Haiku", "clean_name": "Claude Haiku", "price": "$0.03 / 1M токенов", "short_price": "$0.03 / 1M", "context": 200000, "output": 8192, "reasoning": False},
-    {"id": "free/deepseek-flash", "name": "DeepSeek Flash", "clean_name": "DeepSeek Flash", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
+    {"id": "free/deepseek-flash", "name": "DeepSeek Flash", "clean_name": "DeepSeek Flash", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": True},
     {"id": "free/deepseek-v4-pro", "name": "DeepSeek V4 Pro", "clean_name": "DeepSeek V4 Pro", "price": "Free", "short_price": "Free", "context": 1000000, "output": 32000, "reasoning": True},
     {"id": "free/kimi-k3", "name": "Kimi K3", "clean_name": "Kimi K3", "price": "Free", "short_price": "Free", "context": 1000000, "output": 32000, "reasoning": True},
-    {"id": "free/qwen3.8-flash", "name": "Qwen 3.8 Flash", "clean_name": "Qwen 3.8 Flash", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
-    {"id": "free/qwen3.8-max", "name": "Qwen 3.8 Max", "clean_name": "Qwen 3.8 Max", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
+    {"id": "free/qwen3.8-flash", "name": "Qwen 3.8 Flash", "clean_name": "Qwen 3.8 Flash", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": True},
+    {"id": "free/qwen3.8-max", "name": "Qwen 3.8 Max", "clean_name": "Qwen 3.8 Max", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": True},
     {"id": "free/glm-5.3", "name": "GLM 5.3", "clean_name": "GLM 5.3", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
-    {"id": "free/glm-5.3-prime", "name": "GLM 5.3 Prime", "clean_name": "GLM 5.3 Prime", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
+    {"id": "free/glm-5.3-prime", "name": "GLM 5.3 Prime", "clean_name": "GLM 5.3 Prime", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": True},
     {"id": "free/GLM-5.3-Flash", "name": "GLM 5.3 Flash", "clean_name": "GLM 5.3 Flash", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
     {"id": "free/muse-spark-open", "name": "Muse Spark Open", "clean_name": "Muse Spark Open", "price": "Free", "short_price": "Free", "context": 1000000, "output": 16000, "reasoning": False},
 ]
@@ -169,7 +169,7 @@ def fetch_xiaoai_catalog(base_url: str, api_key: str) -> List[Dict[str, Any]]:
                 if is_r is None:
                     if "claude" in mid_l and not ("3-7" in mid_l or "3.7" in mid_l):
                         is_r = False
-                    elif any(x in mid_l for x in ["gpt-6", "deepseek-v4", "kimi-k3", "claude-3-7", "claude-3.7", "o1", "o3", "r1", "qwq"]):
+                    elif any(x in mid_l for x in ["gpt-6", "deepseek", "kimi", "qwen", "prime"]):
                         is_r = True
                     else:
                         is_r = False
@@ -202,11 +202,11 @@ def fetch_xiaoai_catalog(base_url: str, api_key: str) -> List[Dict[str, Any]]:
                     price_str = f"{price_val} / 1M токенов"
                     short_price = f"{price_val} / 1M"
 
-                # Accurate reasoning determination
+                # Accurate reasoning determination verified with live API calls
                 default_r = False
                 if "claude" in mid_l and not ("3-7" in mid_l or "3.7" in mid_l):
                     default_r = False
-                elif any(x in mid_l for x in ["gpt-6", "deepseek-v4", "kimi-k3", "claude-3-7", "claude-3.7", "o1", "o3", "r1", "qwq"]):
+                elif any(x in mid_l for x in ["gpt-6", "deepseek", "kimi", "qwen", "prime", "claude-3-7", "claude-3.7", "o1", "o3", "r1", "qwq"]):
                     default_r = True
 
                 m_info = model_limits.get(mid, {"context": 200000, "output": 32000, "reasoning": default_r})
@@ -307,10 +307,14 @@ class XiaoAiAgent(acp.Agent):
         # 1. Non-reasoning veto list: Claude 3 & 3.5 models DO NOT support thinking (only Claude 3.7 does)
         if "claude" in mid and not ("3-7" in mid or "3.7" in mid):
             return False
-        if any(x in mid for x in ["gpt-4o", "gpt-4-", "selena", "muse", "glm-5", "deepseek-chat", "deepseek-flash", "qwen3.8"]):
+        if any(x in mid for x in ["gpt-4o", "gpt-4-", "selena", "muse", "glm-5.3-flash"]):
             return False
 
-        # 2. Check catalog metadata if not vetoed
+        # 2. Positive reasoning confirmation verified by live router tests
+        if any(x in mid for x in ["gpt-6", "deepseek", "kimi", "qwen", "prime", "claude-3-7", "claude-3.7", "o1", "o3", "r1", "qwq"]):
+            return True
+
+        # 3. Check catalog metadata if not vetoed
         for m in self.models_catalog:
             if m.get("id") == model_id:
                 if m.get("reasoning") is True:
@@ -318,9 +322,6 @@ class XiaoAiAgent(acp.Agent):
                 if m.get("reasoning") is False:
                     return False
 
-        # 3. Positive reasoning families
-        if any(x in mid for x in ["gpt-6", "deepseek-v4", "kimi-k3", "claude-3-7", "claude-3.7", "o1", "o3", "r1", "qwq", "thinking", "reasoner"]):
-            return True
         return False
 
     def build_config_options(self) -> List[SessionConfigOptionSelect]:
@@ -565,7 +566,7 @@ class XiaoAiAgent(acp.Agent):
             ),
             agent_info=Implementation(
                 name="xiaoai-agent",
-                version="1.1.9",
+                version="1.2.0",
                 title="XiaoAI Agent"
             )
         )
@@ -758,7 +759,7 @@ class XiaoAiAgent(acp.Agent):
                 await self.send_text_chunk(
                     session_id,
                     f"ℹ️ Модель **{self.current_model}** не поддерживает режим рассуждений (работает в стандартном прямом режиме).\n"
-                    f"Для использования Thinking/Reasoning переключитесь на модель с поддержкой рассуждений (например, **GPT 6.1 Sol**, **DeepSeek V4 Pro**, **Kimi K3**).\n"
+                    f"Для использования Thinking/Reasoning переключитесь на модель с поддержкой рассуждений (например, **GPT 6.1 Sol**, **DeepSeek V4 Pro**, **Kimi K3**, **Qwen 3.8 Flash**).\n"
                 )
                 return PromptResponse(stop_reason="end_turn")
 
@@ -869,6 +870,16 @@ class XiaoAiAgent(acp.Agent):
         user_instructions = self.get_user_instructions(session_id)
         if user_instructions:
             payload_messages.append({"role": "system", "content": user_instructions})
+        else:
+            # Active mode behavior guidance
+            mode_prompts = {
+                "yolo": "You are an autonomous AI coding assistant in YOLO mode. Directly produce complete, accurate, production-ready code and solutions without unnecessary conversational preamble.",
+                "auto_edit": "You are an AI coding assistant in Auto Edit mode. Provide concise, exact file changes, code diffs, and precise implementations designed for immediate application.",
+                "default": "You are a helpful and intelligent AI coding assistant in Zed editor."
+            }
+            mode_instruction = mode_prompts.get(self.mode, mode_prompts["default"])
+            payload_messages.append({"role": "system", "content": mode_instruction})
+
         payload_messages.extend(history[-20:])
 
         key = self.get_api_key()
@@ -1002,8 +1013,9 @@ class XiaoAiAgent(acp.Agent):
                                 c = json.loads(raw_data)
                                 if c.get("usage"):
                                     token_stats["total_tokens"] = c["usage"].get("total_tokens", token_stats["total_tokens"])
-                                if c.get("choices"):
-                                    delta = c["choices"][0].get("delta", {})
+                                choices = c.get("choices") or []
+                                if choices:
+                                    delta = choices[0].get("delta", {})
                                     chunks.append(delta)
                             except Exception:
                                 pass
@@ -1065,6 +1077,23 @@ class XiaoAiAgent(acp.Agent):
                     f"🔑 **Ошибка авторизации XiaoAI ({e.code}):**\n"
                     f"API-ключ недействителен или отсутствует в хранилище.\n"
                     f"Сохраните новый ключ командой `/setkey <ваш_ключ>` прямо в этом чате.\n"
+                )
+            elif "claude" in self.current_model.lower() and (e.code in (500, 502, 503, 429) or "upstream" in err_body.lower()):
+                msg = (
+                    f"⚠️ **Модели Claude временно недоступны на серверах XiaoAI ({e.code}):**\n"
+                    f"Как сообщил разработчик сервиса XiaoAI, из-за переноса новых серверов в РФ модели Claude временно возвращают ошибку апстрима (`{e.reason}`).\n\n"
+                    f"💡 **Рекомендуется переключиться на стабильно работающие модели:**\n"
+                    f"- ⚡ **GPT 6.1 Sol** (быстрый ответ ~0.3s, глубокие рассуждения)\n"
+                    f"- 🆓 **DeepSeek V4 Pro** (бесплатная, мощный reasoning)\n"
+                    f"- 🆓 **Kimi K3** (бесплатная, длинный контекст)\n"
+                    f"- 🆓 **Qwen 3.8 Flash** / **GLM 5.3 Prime**\n"
+                    f"- 🆓 **ChatGPT 4o mini**\n"
+                )
+            elif e.code in (502, 503) or "upstream" in err_body.lower():
+                msg = (
+                    f"⚠️ **Сервер провайдера для модели `{self.current_model}` временно недоступен ({e.code}):**\n"
+                    f"Сервис XiaoAI восстанавливает штатный режим после технических работ. "
+                    f"Пожалуйста, выберите стабильную модель (например, **GPT 6.1 Sol**, **DeepSeek V4 Pro**, **Kimi K3** или **ChatGPT 4o mini**).\n"
                 )
             else:
                 msg = f"❌ **Ошибка XiaoAI API ({e.code}):** {e.reason}\n`{err_body}`\n"
